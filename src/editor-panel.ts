@@ -645,7 +645,8 @@ export class CSSEditorPanel {
     const unitSelect = container.querySelector(`.size-unit-selector[data-property="${property}"]`) as HTMLSelectElement;
     
     if (numberInput && unitSelect) {
-      const value = `${numberInput.value}${unitSelect.value}`;
+      // If unit is 'auto', just use 'auto' without the number
+      const value = unitSelect.value === 'auto' ? 'auto' : `${numberInput.value}${unitSelect.value}`;
       this.updateProperty(property, value);
     }
   }

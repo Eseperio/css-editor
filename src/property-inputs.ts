@@ -24,9 +24,7 @@ export const COLOR_PROPERTIES = [
   'border-right-color',
   'border-bottom-color',
   'border-left-color',
-  'outline-color',
-  'text-shadow',
-  'box-shadow'
+  'outline-color'
 ];
 
 /**
@@ -73,7 +71,16 @@ export function getPropertyInputType(property: string): PropertyInputType {
  * Parse a CSS value into numeric value and unit
  */
 export function parseCSSValue(value: string): { number: number; unit: string } {
-  if (!value || value === 'auto' || value === 'none') {
+  if (!value) {
+    return { number: 0, unit: 'px' };
+  }
+  
+  // Handle 'auto' and 'none' as special cases
+  if (value === 'auto') {
+    return { number: 0, unit: 'auto' };
+  }
+  
+  if (value === 'none') {
     return { number: 0, unit: 'px' };
   }
   
@@ -136,8 +143,7 @@ export function createColorInput(property: string, value: string): string {
  */
 export function createSizeInput(property: string, value: string): string {
   const parsed = parseCSSValue(value);
-  const maxValue = property.includes('opacity') ? 1 : 
-                   property.includes('radius') ? 100 : 500;
+  const maxValue = property.includes('radius') ? 100 : 500;
   
   return `
     <div class="property-input-group size-input-group">
