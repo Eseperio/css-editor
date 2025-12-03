@@ -1,0 +1,27 @@
+{
+  "name": "css-editor",
+  "version": "1.0.0",
+  "description": "A tool for editing CSS over an existing HTML page",
+  "main": "dist/css-editor.js",
+  "types": "dist/css-editor.d.ts",
+  "scripts": {
+    "build": "tsc && rollup -c",
+    "dev": "rollup -c -w",
+    "test": "echo \"No tests yet\" && exit 0"
+  },
+  "keywords": [
+    "css",
+    "editor",
+    "visual-editor",
+    "css-selector"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-typescript": "^11.1.6",
+    "rollup": "^4.9.6",
+    "tslib": "^2.6.2",
+    "typescript": "^5.3.3"
+  }
+}
