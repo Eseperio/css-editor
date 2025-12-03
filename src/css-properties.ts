@@ -1,35 +1,4 @@
 /**
- * Common CSS properties that should be shown by default
- */
-export const COMMON_PROPERTIES = [
-  'margin',
-  'margin-top',
-  'margin-right',
-  'margin-bottom',
-  'margin-left',
-  'padding',
-  'padding-top',
-  'padding-right',
-  'padding-bottom',
-  'padding-left',
-  'border',
-  'border-width',
-  'border-style',
-  'border-color',
-  'border-radius',
-  'width',
-  'height',
-  'background-color',
-  'color',
-  'font-size',
-  'font-weight',
-  'text-align',
-  'display',
-  'position',
-  'opacity'
-];
-
-/**
  * Property groups for the common properties panel
  */
 export interface PropertyGroup {
@@ -94,6 +63,18 @@ export const PROPERTY_GROUPS: PropertyGroup[] = [
     ]
   }
 ];
+
+/**
+ * Common CSS properties that should be shown by default
+ * Derived from PROPERTY_GROUPS to maintain a single source of truth
+ */
+export const COMMON_PROPERTIES = (() => {
+  const allProperties: string[] = [];
+  PROPERTY_GROUPS.forEach(group => {
+    allProperties.push(...group.properties);
+  });
+  return allProperties;
+})();
 
 /**
  * CSS Properties grouped by category (for advanced settings)

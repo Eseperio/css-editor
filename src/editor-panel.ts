@@ -397,7 +397,7 @@ export class CSSEditorPanel {
       .property-group-content {
         padding: 15px;
         border-top: 1px solid #2c3e50;
-        max-height: 1000px;
+        max-height: 2000px;
         overflow: hidden;
         transition: max-height 0.3s ease, padding 0.3s ease;
       }
