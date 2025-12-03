@@ -530,37 +530,74 @@ export class CSSEditorPanel {
   private exportCSS(): void {
     const css = this.generateCSS();
     
-    if (navigator.clipboard) {
+    if (navigator.clipboard && window.isSecureContext) {
       navigator.clipboard.writeText(css).then(() => {
         alert('CSS copied to clipboard!');
-      }).catch(() => {
-        this.fallbackCopyToClipboard(css);
+      }).catch((err) => {
+        console.error('Failed to copy:', err);
+        this.showCSSInModal(css);
       });
     } else {
-      this.fallbackCopyToClipboard(css);
+      this.showCSSInModal(css);
     }
   }
 
   /**
-   * Fallback method to copy to clipboard
+   * Show CSS in a modal for manual copying (fallback)
    */
-  private fallbackCopyToClipboard(text: string): void {
+  private showCSSInModal(css: string): void {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      z-index: 10001;
+      max-width: 600px;
+      width: 90%;
+    `;
+    
     const textarea = document.createElement('textarea');
-    textarea.value = text;
-    textarea.style.position = 'fixed';
-    textarea.style.opacity = '0';
-    document.body.appendChild(textarea);
+    textarea.value = css;
+    textarea.style.cssText = `
+      width: 100%;
+      height: 200px;
+      margin: 10px 0;
+      padding: 10px;
+      font-family: monospace;
+      font-size: 12px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    `;
+    textarea.readOnly = true;
+    
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = 'Close';
+    closeBtn.style.cssText = `
+      padding: 10px 20px;
+      background: #3498db;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    `;
+    closeBtn.onclick = () => modal.remove();
+    
+    const message = document.createElement('p');
+    message.textContent = 'Copy the CSS below manually:';
+    message.style.margin = '0 0 10px 0';
+    
+    modal.appendChild(message);
+    modal.appendChild(textarea);
+    modal.appendChild(closeBtn);
+    document.body.appendChild(modal);
+    
     textarea.select();
-    
-    try {
-      document.execCommand('copy');
-      alert('CSS copied to clipboard!');
-    } catch (err) {
-      console.error('Failed to copy:', err);
-      alert('Failed to copy CSS. Please copy manually from the preview.');
-    }
-    
-    document.body.removeChild(textarea);
+    textarea.focus();
   }
 
   /**
