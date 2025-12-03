@@ -74,9 +74,9 @@ export const CSS_PROPERTIES = {
 };
 
 /**
- * Get all available properties (excluding common ones)
+ * Cached list of advanced properties (computed once)
  */
-export function getAdvancedProperties(): string[] {
+const ADVANCED_PROPERTIES_CACHE = (() => {
   const allProperties: string[] = [];
   Object.values(CSS_PROPERTIES).forEach(props => {
     allProperties.push(...props);
@@ -84,6 +84,13 @@ export function getAdvancedProperties(): string[] {
   
   // Remove duplicates and filter out common properties
   return [...new Set(allProperties)].filter(prop => !COMMON_PROPERTIES.includes(prop));
+})();
+
+/**
+ * Get all available properties (excluding common ones)
+ */
+export function getAdvancedProperties(): string[] {
+  return ADVANCED_PROPERTIES_CACHE;
 }
 
 /**

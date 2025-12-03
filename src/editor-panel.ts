@@ -548,9 +548,12 @@ export class CSSEditorPanel {
       </div>
     `;
 
-    // Add modal styles
-    const style = document.createElement('style');
-    style.textContent = `
+    // Add modal styles (reuse existing or create once)
+    let style = document.getElementById('property-selector-modal-styles') as HTMLStyleElement;
+    if (!style) {
+      style = document.createElement('style');
+      style.id = 'property-selector-modal-styles';
+      style.textContent = `
       .property-selector-modal {
         position: fixed;
         top: 0;
@@ -625,7 +628,8 @@ export class CSSEditorPanel {
         background: #c0392b;
       }
     `;
-    document.head.appendChild(style);
+      document.head.appendChild(style);
+    }
 
     document.body.appendChild(modal);
 
