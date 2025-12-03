@@ -159,7 +159,8 @@ export function getPropertyValues(property: string): string[] {
     'justify-content': ['flex-start', 'flex-end', 'center', 'space-between', 'space-around', 'space-evenly'],
     'align-items': ['flex-start', 'flex-end', 'center', 'baseline', 'stretch'],
     'float': ['none', 'left', 'right'],
-    'clear': ['none', 'left', 'right', 'both']
+    'clear': ['none', 'left', 'right', 'both'],
+    'border-style': ['none', 'solid', 'dashed', 'dotted', 'double', 'groove', 'ridge', 'inset', 'outset']
   };
 
   return commonValues[property] || [];
