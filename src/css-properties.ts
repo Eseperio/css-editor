@@ -25,7 +25,8 @@ export const COMMON_PROPERTIES = [
   'font-weight',
   'text-align',
   'display',
-  'position'
+  'position',
+  'opacity'
 ];
 
 /**

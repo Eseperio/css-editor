@@ -1,4 +1,12 @@
 import { CSS_PROPERTIES, COMMON_PROPERTIES, getPropertyValues, getAdvancedProperties } from './css-properties';
+import { 
+  getPropertyInputType, 
+  createColorInput, 
+  createSizeInput, 
+  createPercentageInput, 
+  getPropertyInputStyles,
+  parseCSSValue 
+} from './property-inputs';
 
 /**
  * CSS Editor Panel Interface
@@ -246,8 +254,8 @@ export class CSSEditorPanel {
         font-size: 13px;
         color: #bdc3c7;
       }
-      .css-property input,
-      .css-property select {
+      .css-property input:not(.color-picker):not(.size-slider):not(.size-number-input):not(.color-text-input):not(.percentage-slider):not(.percentage-number-input),
+      .css-property select:not(.size-unit-selector) {
         width: 100%;
         padding: 8px;
         background: #34495e;
@@ -256,8 +264,8 @@ export class CSSEditorPanel {
         border-radius: 4px;
         font-size: 13px;
       }
-      .css-property.active input,
-      .css-property.active select {
+      .css-property.active input:not(.color-picker):not(.size-slider):not(.size-number-input):not(.color-text-input):not(.percentage-slider):not(.percentage-number-input),
+      .css-property.active select:not(.size-unit-selector) {
         border-color: #3498db;
         background: #2c3e50;
       }
@@ -336,6 +344,9 @@ export class CSSEditorPanel {
         max-height: 200px;
         overflow-y: auto;
       }
+      
+      /* Property input styles */
+      ${getPropertyInputStyles()}
     `;
     document.head.appendChild(style);
   }
@@ -402,7 +413,9 @@ export class CSSEditorPanel {
       const currentValue = this.currentStyles.get(prop) || '';
       const isModified = this.modifiedProperties.has(prop);
       const suggestions = getPropertyValues(prop);
+      const inputType = getPropertyInputType(prop);
       
+      // If property has predefined suggestions (like display, position), use dropdown
       if (suggestions.length > 0) {
         return `
           <div class="css-property ${isModified ? 'active' : 'disabled'}" data-property="${prop}">
@@ -414,6 +427,27 @@ export class CSSEditorPanel {
               ).join('')}
               <option value="custom">Custom value...</option>
             </select>
+          </div>
+        `;
+      } else if (inputType === 'color') {
+        return `
+          <div class="css-property ${isModified ? 'active' : 'disabled'}" data-property="${prop}">
+            <label>${prop}</label>
+            ${createColorInput(prop, currentValue)}
+          </div>
+        `;
+      } else if (inputType === 'size') {
+        return `
+          <div class="css-property ${isModified ? 'active' : 'disabled'}" data-property="${prop}">
+            <label>${prop}</label>
+            ${createSizeInput(prop, currentValue)}
+          </div>
+        `;
+      } else if (inputType === 'number') {
+        return `
+          <div class="css-property ${isModified ? 'active' : 'disabled'}" data-property="${prop}">
+            <label>${prop}</label>
+            ${createPercentageInput(prop, currentValue)}
           </div>
         `;
       } else {
@@ -444,7 +478,9 @@ export class CSSEditorPanel {
     container.innerHTML = Array.from(this.advancedProperties).map(prop => {
       const currentValue = this.currentStyles.get(prop) || '';
       const suggestions = getPropertyValues(prop);
+      const inputType = getPropertyInputType(prop);
       
+      // If property has predefined suggestions, use dropdown
       if (suggestions.length > 0) {
         return `
           <div class="css-property active" data-property="${prop}">
@@ -456,6 +492,30 @@ export class CSSEditorPanel {
               ).join('')}
               <option value="custom">Custom value...</option>
             </select>
+            <button class="property-remove-btn" data-remove="${prop}">Remove</button>
+          </div>
+        `;
+      } else if (inputType === 'color') {
+        return `
+          <div class="css-property active" data-property="${prop}">
+            <label>${prop}</label>
+            ${createColorInput(prop, currentValue)}
+            <button class="property-remove-btn" data-remove="${prop}">Remove</button>
+          </div>
+        `;
+      } else if (inputType === 'size') {
+        return `
+          <div class="css-property active" data-property="${prop}">
+            <label>${prop}</label>
+            ${createSizeInput(prop, currentValue)}
+            <button class="property-remove-btn" data-remove="${prop}">Remove</button>
+          </div>
+        `;
+      } else if (inputType === 'number') {
+        return `
+          <div class="css-property active" data-property="${prop}">
+            <label>${prop}</label>
+            ${createPercentageInput(prop, currentValue)}
             <button class="property-remove-btn" data-remove="${prop}">Remove</button>
           </div>
         `;
@@ -490,12 +550,21 @@ export class CSSEditorPanel {
   private attachPropertyListeners(container: Element): void {
     const inputs = container.querySelectorAll('input, select');
     inputs.forEach(input => {
-      input.addEventListener('change', (e) => {
-        const target = e.target as HTMLInputElement | HTMLSelectElement;
-        const property = target.getAttribute('data-property');
-        
-        if (property) {
-          if (target.tagName === 'SELECT' && target.value === 'custom') {
+      const target = input as HTMLInputElement | HTMLSelectElement;
+      const property = target.getAttribute('data-property');
+      
+      if (!property) return;
+      
+      // Handle regular select dropdowns
+      if (target.tagName === 'SELECT' && target.classList.contains('size-unit-selector')) {
+        // Handle unit selector - combine with number input
+        target.addEventListener('change', () => {
+          this.handleSizeInputChange(property);
+        });
+      } else if (target.tagName === 'SELECT') {
+        // Handle regular property dropdowns
+        target.addEventListener('change', () => {
+          if (target.value === 'custom') {
             const customValue = prompt(`Enter custom value for ${property}:`);
             if (customValue) {
               this.updateProperty(property, customValue);
@@ -504,19 +573,82 @@ export class CSSEditorPanel {
           } else {
             this.updateProperty(property, target.value);
           }
-        }
-      });
-
-      input.addEventListener('input', (e) => {
-        const target = e.target as HTMLInputElement;
-        if (target.tagName === 'INPUT') {
-          const property = target.getAttribute('data-property');
-          if (property) {
-            this.updateProperty(property, target.value);
+        });
+      } else if (target.classList.contains('color-picker')) {
+        // Handle color picker
+        target.addEventListener('input', () => {
+          this.updateProperty(property, target.value);
+          // Also update the text input
+          const textInput = container.querySelector(`.color-text-input[data-property="${property}"]`) as HTMLInputElement;
+          if (textInput) {
+            textInput.value = target.value;
           }
-        }
-      });
+        });
+      } else if (target.classList.contains('color-text-input')) {
+        // Handle color text input
+        target.addEventListener('input', () => {
+          this.updateProperty(property, target.value);
+        });
+      } else if (target.classList.contains('size-slider')) {
+        // Handle size slider
+        target.addEventListener('input', () => {
+          const numberInput = container.querySelector(`.size-number-input[data-property="${property}"]`) as HTMLInputElement;
+          if (numberInput) {
+            numberInput.value = target.value;
+          }
+          this.handleSizeInputChange(property);
+        });
+      } else if (target.classList.contains('size-number-input')) {
+        // Handle size number input
+        target.addEventListener('input', () => {
+          const slider = container.querySelector(`.size-slider[data-property="${property}"]`) as HTMLInputElement;
+          if (slider) {
+            slider.value = target.value;
+          }
+          this.handleSizeInputChange(property);
+        });
+      } else if (target.classList.contains('percentage-slider')) {
+        // Handle percentage slider
+        target.addEventListener('input', () => {
+          const numberInput = container.querySelector(`.percentage-number-input[data-property="${property}"]`) as HTMLInputElement;
+          if (numberInput) {
+            numberInput.value = target.value;
+          }
+          this.updateProperty(property, target.value);
+        });
+      } else if (target.classList.contains('percentage-number-input')) {
+        // Handle percentage number input
+        target.addEventListener('input', () => {
+          const slider = container.querySelector(`.percentage-slider[data-property="${property}"]`) as HTMLInputElement;
+          if (slider) {
+            slider.value = target.value;
+          }
+          this.updateProperty(property, target.value);
+        });
+      } else if (target.tagName === 'INPUT') {
+        // Handle regular text inputs
+        target.addEventListener('input', () => {
+          this.updateProperty(property, target.value);
+        });
+      }
     });
+  }
+
+  /**
+   * Handle size input changes (combines number and unit)
+   */
+  private handleSizeInputChange(property: string): void {
+    const container = this.panel?.querySelector('.common-properties, .advanced-properties');
+    if (!container) return;
+    
+    const numberInput = container.querySelector(`.size-number-input[data-property="${property}"]`) as HTMLInputElement;
+    const unitSelect = container.querySelector(`.size-unit-selector[data-property="${property}"]`) as HTMLSelectElement;
+    
+    if (numberInput && unitSelect) {
+      // If unit is 'auto', just use 'auto' without the number
+      const value = unitSelect.value === 'auto' ? 'auto' : `${numberInput.value}${unitSelect.value}`;
+      this.updateProperty(property, value);
+    }
   }
 
   /**
