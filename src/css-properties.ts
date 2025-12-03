@@ -1,5 +1,35 @@
 /**
- * CSS Properties grouped by category
+ * Common CSS properties that should be shown by default
+ */
+export const COMMON_PROPERTIES = [
+  'margin',
+  'margin-top',
+  'margin-right',
+  'margin-bottom',
+  'margin-left',
+  'padding',
+  'padding-top',
+  'padding-right',
+  'padding-bottom',
+  'padding-left',
+  'border',
+  'border-width',
+  'border-style',
+  'border-color',
+  'border-radius',
+  'width',
+  'height',
+  'background-color',
+  'color',
+  'font-size',
+  'font-weight',
+  'text-align',
+  'display',
+  'position'
+];
+
+/**
+ * CSS Properties grouped by category (for advanced settings)
  */
 export const CSS_PROPERTIES = {
   layout: [
@@ -42,6 +72,26 @@ export const CSS_PROPERTIES = {
     'cursor', 'pointer-events', 'visibility'
   ]
 };
+
+/**
+ * Cached list of advanced properties (computed once)
+ */
+const ADVANCED_PROPERTIES_CACHE = (() => {
+  const allProperties: string[] = [];
+  Object.values(CSS_PROPERTIES).forEach(props => {
+    allProperties.push(...props);
+  });
+  
+  // Remove duplicates and filter out common properties
+  return [...new Set(allProperties)].filter(prop => !COMMON_PROPERTIES.includes(prop));
+})();
+
+/**
+ * Get all available properties (excluding common ones)
+ */
+export function getAdvancedProperties(): string[] {
+  return ADVANCED_PROPERTIES_CACHE;
+}
 
 /**
  * Get common values for a CSS property
