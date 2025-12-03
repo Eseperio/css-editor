@@ -1,33 +1,80 @@
 /**
- * Common CSS properties that should be shown by default
+ * Property groups for the common properties panel
  */
-export const COMMON_PROPERTIES = [
-  'margin',
-  'margin-top',
-  'margin-right',
-  'margin-bottom',
-  'margin-left',
-  'padding',
-  'padding-top',
-  'padding-right',
-  'padding-bottom',
-  'padding-left',
-  'border',
-  'border-width',
-  'border-style',
-  'border-color',
-  'border-radius',
-  'width',
-  'height',
-  'background-color',
-  'color',
-  'font-size',
-  'font-weight',
-  'text-align',
-  'display',
-  'position',
-  'opacity'
+export interface PropertyGroup {
+  name: string;
+  properties: string[];
+}
+
+export const PROPERTY_GROUPS: PropertyGroup[] = [
+  {
+    name: 'Spacing',
+    properties: [
+      'margin',
+      'margin-top',
+      'margin-right',
+      'margin-bottom',
+      'margin-left',
+      'padding',
+      'padding-top',
+      'padding-right',
+      'padding-bottom',
+      'padding-left'
+    ]
+  },
+  {
+    name: 'Border',
+    properties: [
+      'border',
+      'border-width',
+      'border-style',
+      'border-color',
+      'border-radius'
+    ]
+  },
+  {
+    name: 'Size',
+    properties: [
+      'width',
+      'height'
+    ]
+  },
+  {
+    name: 'Typography',
+    properties: [
+      'color',
+      'font-size',
+      'font-weight',
+      'text-align'
+    ]
+  },
+  {
+    name: 'Layout',
+    properties: [
+      'display',
+      'position'
+    ]
+  },
+  {
+    name: 'Effects',
+    properties: [
+      'background-color',
+      'opacity'
+    ]
+  }
 ];
+
+/**
+ * Common CSS properties that should be shown by default
+ * Derived from PROPERTY_GROUPS to maintain a single source of truth
+ */
+export const COMMON_PROPERTIES = (() => {
+  const allProperties: string[] = [];
+  PROPERTY_GROUPS.forEach(group => {
+    allProperties.push(...group.properties);
+  });
+  return allProperties;
+})();
 
 /**
  * CSS Properties grouped by category (for advanced settings)
@@ -112,7 +159,8 @@ export function getPropertyValues(property: string): string[] {
     'justify-content': ['flex-start', 'flex-end', 'center', 'space-between', 'space-around', 'space-evenly'],
     'align-items': ['flex-start', 'flex-end', 'center', 'baseline', 'stretch'],
     'float': ['none', 'left', 'right'],
-    'clear': ['none', 'left', 'right', 'both']
+    'clear': ['none', 'left', 'right', 'both'],
+    'border-style': ['none', 'solid', 'dashed', 'dotted', 'double', 'groove', 'ridge', 'inset', 'outset']
   };
 
   return commonValues[property] || [];
