@@ -134,4 +134,4 @@ export class CSSEditor {
 export { ElementPicker } from './element-picker';
 export { CSSEditorPanel, CSSEditorOptions } from './editor-panel';
 export { generateUniqueSelector } from './selector-generator';
-export { CSS_PROPERTIES, getPropertyValues } from './css-properties';
+export { CSS_PROPERTIES, COMMON_PROPERTIES, getPropertyValues, getAdvancedProperties } from './css-properties';

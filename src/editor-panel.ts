@@ -1,4 +1,4 @@
-import { CSS_PROPERTIES, getPropertyValues } from './css-properties';
+import { CSS_PROPERTIES, COMMON_PROPERTIES, getPropertyValues, getAdvancedProperties } from './css-properties';
 
 /**
  * CSS Editor Panel Interface
@@ -17,6 +17,8 @@ export class CSSEditorPanel {
   private panel: HTMLElement | null = null;
   private currentSelector: string = '';
   private currentStyles: Map<string, string> = new Map();
+  private modifiedProperties: Set<string> = new Set(); // Track user-modified properties
+  private advancedProperties: Set<string> = new Set(); // Track added advanced properties
   private options: CSSEditorOptions;
   private styleElement: HTMLStyleElement;
 
@@ -33,6 +35,8 @@ export class CSSEditorPanel {
   public show(selector: string, element: Element): void {
     this.currentSelector = selector;
     this.loadCurrentStyles(element);
+    this.modifiedProperties.clear(); // Reset modified properties for new element
+    this.advancedProperties.clear(); // Reset advanced properties for new element
     
     if (!this.panel) {
       this.createPanel();
@@ -88,12 +92,19 @@ export class CSSEditorPanel {
         <label>Selector:</label>
         <input type="text" class="selector-input" readonly />
       </div>
-      <div class="css-editor-tabs">
-        ${Object.keys(CSS_PROPERTIES).map(category => 
-          `<button class="css-editor-tab" data-category="${category}">${this.capitalize(category)}</button>`
-        ).join('')}
+      <div class="css-editor-content">
+        <div class="common-properties-section">
+          <h4>Common Properties</h4>
+          <div class="common-properties"></div>
+        </div>
+        <div class="advanced-properties-section">
+          <h4>Advanced Properties</h4>
+          <button class="add-property-btn" title="Add Property">
+            <span class="plus-icon">+</span> Add Property
+          </button>
+          <div class="advanced-properties"></div>
+        </div>
       </div>
-      <div class="css-editor-content"></div>
       <div class="css-editor-footer">
         <button class="css-editor-save">Save CSS</button>
         ${this.options.loadEndpoint ? '<button class="css-editor-load">Load CSS</button>' : ''}
@@ -179,36 +190,55 @@ export class CSSEditorPanel {
         font-family: 'Monaco', 'Courier New', monospace;
         font-size: 12px;
       }
-      .css-editor-tabs {
-        display: flex;
-        flex-wrap: wrap;
-        padding: 10px 20px 0;
-        gap: 5px;
-        background: #34495e;
-        border-bottom: 2px solid #2c3e50;
-      }
-      .css-editor-tab {
-        padding: 8px 12px;
-        background: #2c3e50;
-        border: none;
-        color: #ecf0f1;
-        cursor: pointer;
-        border-radius: 4px 4px 0 0;
-        font-size: 12px;
-        transition: background 0.2s;
-      }
-      .css-editor-tab:hover {
-        background: #1abc9c;
-      }
-      .css-editor-tab.active {
-        background: #3498db;
-      }
       .css-editor-content {
         padding: 20px;
         min-height: 300px;
       }
+      .common-properties-section,
+      .advanced-properties-section {
+        margin-bottom: 25px;
+      }
+      .common-properties-section h4,
+      .advanced-properties-section h4 {
+        margin: 0 0 15px;
+        font-size: 14px;
+        color: #95a5a6;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+      .add-property-btn {
+        width: 100%;
+        padding: 12px;
+        background: #27ae60;
+        border: none;
+        color: white;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        transition: background 0.2s;
+        margin-bottom: 15px;
+      }
+      .add-property-btn:hover {
+        background: #229954;
+      }
+      .plus-icon {
+        font-size: 20px;
+        font-weight: bold;
+      }
       .css-property {
         margin-bottom: 15px;
+        transition: opacity 0.3s;
+      }
+      .css-property.disabled {
+        opacity: 0.5;
+      }
+      .css-property.active {
+        opacity: 1;
       }
       .css-property label {
         display: block;
@@ -226,10 +256,28 @@ export class CSSEditorPanel {
         border-radius: 4px;
         font-size: 13px;
       }
+      .css-property.active input,
+      .css-property.active select {
+        border-color: #3498db;
+        background: #2c3e50;
+      }
       .css-property input:focus,
       .css-property select:focus {
         outline: none;
         border-color: #3498db;
+      }
+      .property-remove-btn {
+        margin-top: 5px;
+        padding: 5px 10px;
+        background: #e74c3c;
+        border: none;
+        color: white;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 11px;
+      }
+      .property-remove-btn:hover {
+        background: #c0392b;
       }
       .css-editor-footer {
         padding: 15px 20px;
@@ -302,18 +350,9 @@ export class CSSEditorPanel {
     const closeBtn = this.panel.querySelector('.css-editor-close');
     closeBtn?.addEventListener('click', () => this.hide());
 
-    // Tab buttons
-    const tabs = this.panel.querySelectorAll('.css-editor-tab');
-    tabs.forEach(tab => {
-      tab.addEventListener('click', () => {
-        tabs.forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
-        const category = tab.getAttribute('data-category');
-        if (category) {
-          this.showCategory(category);
-        }
-      });
-    });
+    // Add property button
+    const addPropertyBtn = this.panel.querySelector('.add-property-btn');
+    addPropertyBtn?.addEventListener('click', () => this.showPropertySelector());
 
     // Save button
     const saveBtn = this.panel.querySelector('.css-editor-save');
@@ -343,31 +382,30 @@ export class CSSEditorPanel {
       selectorInput.value = this.currentSelector;
     }
 
-    // Activate first tab by default
-    const firstTab = this.panel.querySelector('.css-editor-tab') as HTMLElement;
-    if (firstTab) {
-      firstTab.click();
-    }
+    // Render common properties
+    this.renderCommonProperties();
+    
+    // Render any advanced properties that were added
+    this.renderAdvancedProperties();
 
     this.updatePreview();
   }
 
   /**
-   * Show properties for a specific category
+   * Render common properties section
    */
-  private showCategory(category: string): void {
-    const content = this.panel?.querySelector('.css-editor-content');
-    if (!content) return;
+  private renderCommonProperties(): void {
+    const container = this.panel?.querySelector('.common-properties');
+    if (!container) return;
 
-    const properties = CSS_PROPERTIES[category as keyof typeof CSS_PROPERTIES] || [];
-    
-    content.innerHTML = properties.map(prop => {
+    container.innerHTML = COMMON_PROPERTIES.map(prop => {
       const currentValue = this.currentStyles.get(prop) || '';
+      const isModified = this.modifiedProperties.has(prop);
       const suggestions = getPropertyValues(prop);
       
       if (suggestions.length > 0) {
         return `
-          <div class="css-property">
+          <div class="css-property ${isModified ? 'active' : 'disabled'}" data-property="${prop}">
             <label>${prop}</label>
             <select data-property="${prop}">
               <option value="">-- Select --</option>
@@ -380,7 +418,7 @@ export class CSSEditorPanel {
         `;
       } else {
         return `
-          <div class="css-property">
+          <div class="css-property ${isModified ? 'active' : 'disabled'}" data-property="${prop}">
             <label>${prop}</label>
             <input type="text" data-property="${prop}" value="${currentValue}" placeholder="Enter value" />
           </div>
@@ -388,8 +426,69 @@ export class CSSEditorPanel {
       }
     }).join('');
 
-    // Attach change listeners
-    const inputs = content.querySelectorAll('input, select');
+    this.attachPropertyListeners(container);
+  }
+
+  /**
+   * Render advanced properties section
+   */
+  private renderAdvancedProperties(): void {
+    const container = this.panel?.querySelector('.advanced-properties');
+    if (!container) return;
+
+    if (this.advancedProperties.size === 0) {
+      container.innerHTML = '';
+      return;
+    }
+
+    container.innerHTML = Array.from(this.advancedProperties).map(prop => {
+      const currentValue = this.currentStyles.get(prop) || '';
+      const suggestions = getPropertyValues(prop);
+      
+      if (suggestions.length > 0) {
+        return `
+          <div class="css-property active" data-property="${prop}">
+            <label>${prop}</label>
+            <select data-property="${prop}">
+              <option value="">-- Select --</option>
+              ${suggestions.map(val => 
+                `<option value="${val}" ${currentValue === val ? 'selected' : ''}>${val}</option>`
+              ).join('')}
+              <option value="custom">Custom value...</option>
+            </select>
+            <button class="property-remove-btn" data-remove="${prop}">Remove</button>
+          </div>
+        `;
+      } else {
+        return `
+          <div class="css-property active" data-property="${prop}">
+            <label>${prop}</label>
+            <input type="text" data-property="${prop}" value="${currentValue}" placeholder="Enter value" />
+            <button class="property-remove-btn" data-remove="${prop}">Remove</button>
+          </div>
+        `;
+      }
+    }).join('');
+
+    this.attachPropertyListeners(container);
+    
+    // Attach remove button listeners
+    const removeButtons = container.querySelectorAll('.property-remove-btn');
+    removeButtons.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const property = (e.target as HTMLElement).getAttribute('data-remove');
+        if (property) {
+          this.removeAdvancedProperty(property);
+        }
+      });
+    });
+  }
+
+  /**
+   * Attach change listeners to property inputs
+   */
+  private attachPropertyListeners(container: Element): void {
+    const inputs = container.querySelectorAll('input, select');
     inputs.forEach(input => {
       input.addEventListener('change', (e) => {
         const target = e.target as HTMLInputElement | HTMLSelectElement;
@@ -421,13 +520,202 @@ export class CSSEditorPanel {
   }
 
   /**
+   * Show property selector modal
+   */
+  private showPropertySelector(): void {
+    const availableProperties = getAdvancedProperties().filter(
+      prop => !this.advancedProperties.has(prop)
+    );
+
+    if (availableProperties.length === 0) {
+      alert('All advanced properties have been added!');
+      return;
+    }
+
+    // Create modal
+    const modal = document.createElement('div');
+    modal.className = 'property-selector-modal';
+    modal.innerHTML = `
+      <div class="property-selector-content">
+        <h3>Select Property to Add</h3>
+        <input type="text" class="property-search" placeholder="Search properties..." />
+        <div class="property-list">
+          ${availableProperties.map(prop => 
+            `<button class="property-option" data-property="${prop}">${prop}</button>`
+          ).join('')}
+        </div>
+        <button class="modal-close">Cancel</button>
+      </div>
+    `;
+
+    // Add modal styles
+    const style = document.createElement('style');
+    style.textContent = `
+      .property-selector-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10001;
+      }
+      .property-selector-content {
+        background: #2c3e50;
+        padding: 30px;
+        border-radius: 8px;
+        max-width: 500px;
+        width: 90%;
+        max-height: 80vh;
+        display: flex;
+        flex-direction: column;
+      }
+      .property-selector-content h3 {
+        margin: 0 0 20px;
+        color: #ecf0f1;
+      }
+      .property-search {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 15px;
+        background: #34495e;
+        border: 1px solid #7f8c8d;
+        color: #ecf0f1;
+        border-radius: 4px;
+        font-size: 14px;
+      }
+      .property-list {
+        flex: 1;
+        overflow-y: auto;
+        margin-bottom: 15px;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 10px;
+      }
+      .property-option {
+        padding: 10px;
+        background: #34495e;
+        border: 1px solid #7f8c8d;
+        color: #ecf0f1;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        transition: all 0.2s;
+      }
+      .property-option:hover {
+        background: #3498db;
+        border-color: #3498db;
+      }
+      .property-option.hidden {
+        display: none;
+      }
+      .modal-close {
+        padding: 10px 20px;
+        background: #e74c3c;
+        border: none;
+        color: white;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      .modal-close:hover {
+        background: #c0392b;
+      }
+    `;
+    document.head.appendChild(style);
+
+    document.body.appendChild(modal);
+
+    // Search functionality
+    const searchInput = modal.querySelector('.property-search') as HTMLInputElement;
+    const propertyOptions = modal.querySelectorAll('.property-option');
+    
+    searchInput?.addEventListener('input', () => {
+      const searchTerm = searchInput.value.toLowerCase();
+      propertyOptions.forEach(option => {
+        const propertyName = option.textContent?.toLowerCase() || '';
+        if (propertyName.includes(searchTerm)) {
+          option.classList.remove('hidden');
+        } else {
+          option.classList.add('hidden');
+        }
+      });
+    });
+
+    // Property selection
+    propertyOptions.forEach(option => {
+      option.addEventListener('click', () => {
+        const property = option.getAttribute('data-property');
+        if (property) {
+          this.addAdvancedProperty(property);
+          modal.remove();
+        }
+      });
+    });
+
+    // Close button
+    const closeBtn = modal.querySelector('.modal-close');
+    closeBtn?.addEventListener('click', () => modal.remove());
+
+    // Close on backdrop click
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.remove();
+      }
+    });
+  }
+
+  /**
+   * Add an advanced property
+   */
+  private addAdvancedProperty(property: string): void {
+    this.advancedProperties.add(property);
+    this.modifiedProperties.add(property);
+    this.renderAdvancedProperties();
+    this.updatePreview();
+  }
+
+  /**
+   * Remove an advanced property
+   */
+  private removeAdvancedProperty(property: string): void {
+    this.advancedProperties.delete(property);
+    this.modifiedProperties.delete(property);
+    this.currentStyles.delete(property);
+    this.renderAdvancedProperties();
+    this.applyStyles();
+    this.updatePreview();
+  }
+
+  /**
    * Update a CSS property
    */
   private updateProperty(property: string, value: string): void {
-    if (value) {
+    if (value && value.trim() !== '') {
       this.currentStyles.set(property, value);
+      this.modifiedProperties.add(property);
+      
+      // Update the visual state of the property
+      const propertyElement = this.panel?.querySelector(`.css-property[data-property="${property}"]`);
+      if (propertyElement) {
+        propertyElement.classList.remove('disabled');
+        propertyElement.classList.add('active');
+      }
     } else {
       this.currentStyles.delete(property);
+      this.modifiedProperties.delete(property);
+      
+      // Update the visual state of the property (only for common properties)
+      if (COMMON_PROPERTIES.includes(property)) {
+        const propertyElement = this.panel?.querySelector(`.css-property[data-property="${property}"]`);
+        if (propertyElement) {
+          propertyElement.classList.remove('active');
+          propertyElement.classList.add('disabled');
+        }
+      }
     }
     this.applyStyles();
     this.updatePreview();
@@ -442,18 +730,22 @@ export class CSSEditorPanel {
   }
 
   /**
-   * Generate CSS from current styles
+   * Generate CSS from current styles (only modified properties)
    */
   private generateCSS(): string {
-    if (this.currentStyles.size === 0) {
+    if (this.modifiedProperties.size === 0) {
       return '';
     }
 
-    const properties = Array.from(this.currentStyles.entries())
-      .map(([prop, value]) => `  ${prop}: ${value};`)
+    const properties = Array.from(this.modifiedProperties)
+      .map(prop => {
+        const value = this.currentStyles.get(prop);
+        return value ? `  ${prop}: ${value};` : null;
+      })
+      .filter(line => line !== null)
       .join('\n');
 
-    return `${this.currentSelector} {\n${properties}\n}`;
+    return properties ? `${this.currentSelector} {\n${properties}\n}` : '';
   }
 
   /**
@@ -606,17 +898,14 @@ export class CSSEditorPanel {
   private clearChanges(): void {
     if (confirm('Are you sure you want to clear all changes?')) {
       this.currentStyles.clear();
+      this.modifiedProperties.clear();
+      this.advancedProperties.clear();
       this.styleElement.textContent = '';
-      this.updatePreview();
       
-      // Refresh the current tab
-      const activeTab = this.panel?.querySelector('.css-editor-tab.active');
-      if (activeTab) {
-        const category = activeTab.getAttribute('data-category');
-        if (category) {
-          this.showCategory(category);
-        }
-      }
+      // Re-render the properties
+      this.renderCommonProperties();
+      this.renderAdvancedProperties();
+      this.updatePreview();
     }
   }
 
