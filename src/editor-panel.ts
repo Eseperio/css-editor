@@ -1,4 +1,4 @@
-import { CSS_PROPERTIES, COMMON_PROPERTIES, getPropertyValues, getAdvancedProperties } from './css-properties';
+import { CSS_PROPERTIES, COMMON_PROPERTIES, PROPERTY_GROUPS, PropertyGroup, getPropertyValues, getAdvancedProperties } from './css-properties';
 import { 
   getPropertyInputType, 
   createColorInput, 
@@ -27,6 +27,7 @@ export class CSSEditorPanel {
   private currentStyles: Map<string, string> = new Map();
   private modifiedProperties: Set<string> = new Set(); // Track user-modified properties
   private advancedProperties: Set<string> = new Set(); // Track added advanced properties
+  private collapsedGroups: Set<string> = new Set(); // Track collapsed property groups
   private options: CSSEditorOptions;
   private styleElement: HTMLStyleElement;
 
@@ -345,6 +346,68 @@ export class CSSEditorPanel {
         overflow-y: auto;
       }
       
+      /* Property group styles */
+      .property-group {
+        margin-bottom: 15px;
+        background: #34495e;
+        border-radius: 6px;
+        overflow: hidden;
+      }
+      .property-group-header {
+        display: flex;
+        align-items: center;
+        padding: 12px 15px;
+        cursor: pointer;
+        user-select: none;
+        transition: background 0.2s;
+        gap: 10px;
+      }
+      .property-group-header:hover {
+        background: #3d5568;
+      }
+      .property-group-indicator {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: transparent;
+        transition: background 0.2s;
+        flex-shrink: 0;
+      }
+      .property-group-indicator.active {
+        background: #3498db;
+        box-shadow: 0 0 8px rgba(52, 152, 219, 0.6);
+      }
+      .property-group-title {
+        flex: 1;
+        font-size: 13px;
+        font-weight: 600;
+        color: #ecf0f1;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .property-group-toggle {
+        font-size: 16px;
+        color: #95a5a6;
+        transition: transform 0.2s;
+        flex-shrink: 0;
+      }
+      .property-group-toggle.collapsed {
+        transform: rotate(-90deg);
+      }
+      .property-group-content {
+        padding: 15px;
+        border-top: 1px solid #2c3e50;
+        max-height: 1000px;
+        overflow: hidden;
+        transition: max-height 0.3s ease, padding 0.3s ease;
+      }
+      .property-group-content.collapsed {
+        max-height: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+        border-top: none;
+      }
+      
       /* Property input styles */
       ${getPropertyInputStyles()}
     `;
@@ -409,58 +472,106 @@ export class CSSEditorPanel {
     const container = this.panel?.querySelector('.common-properties');
     if (!container) return;
 
-    container.innerHTML = COMMON_PROPERTIES.map(prop => {
-      const currentValue = this.currentStyles.get(prop) || '';
-      const isModified = this.modifiedProperties.has(prop);
-      const suggestions = getPropertyValues(prop);
-      const inputType = getPropertyInputType(prop);
+    container.innerHTML = PROPERTY_GROUPS.map(group => {
+      // Check if any property in this group is modified
+      const hasModifiedProperty = group.properties.some(prop => this.modifiedProperties.has(prop));
+      const isCollapsed = this.collapsedGroups.has(group.name);
       
-      // If property has predefined suggestions (like display, position), use dropdown
-      if (suggestions.length > 0) {
-        return `
-          <div class="css-property ${isModified ? 'active' : 'disabled'}" data-property="${prop}">
-            <label>${prop}</label>
-            <select data-property="${prop}">
-              <option value="">-- Select --</option>
-              ${suggestions.map(val => 
-                `<option value="${val}" ${currentValue === val ? 'selected' : ''}>${val}</option>`
-              ).join('')}
-              <option value="custom">Custom value...</option>
-            </select>
+      // Generate properties HTML for this group
+      const propertiesHtml = group.properties.map(prop => {
+        const currentValue = this.currentStyles.get(prop) || '';
+        const isModified = this.modifiedProperties.has(prop);
+        const suggestions = getPropertyValues(prop);
+        const inputType = getPropertyInputType(prop);
+        
+        // If property has predefined suggestions (like display, position), use dropdown
+        if (suggestions.length > 0) {
+          return `
+            <div class="css-property ${isModified ? 'active' : 'disabled'}" data-property="${prop}">
+              <label>${prop}</label>
+              <select data-property="${prop}">
+                <option value="">-- Select --</option>
+                ${suggestions.map(val => 
+                  `<option value="${val}" ${currentValue === val ? 'selected' : ''}>${val}</option>`
+                ).join('')}
+                <option value="custom">Custom value...</option>
+              </select>
+            </div>
+          `;
+        } else if (inputType === 'color') {
+          return `
+            <div class="css-property ${isModified ? 'active' : 'disabled'}" data-property="${prop}">
+              <label>${prop}</label>
+              ${createColorInput(prop, currentValue)}
+            </div>
+          `;
+        } else if (inputType === 'size') {
+          return `
+            <div class="css-property ${isModified ? 'active' : 'disabled'}" data-property="${prop}">
+              <label>${prop}</label>
+              ${createSizeInput(prop, currentValue)}
+            </div>
+          `;
+        } else if (inputType === 'number') {
+          return `
+            <div class="css-property ${isModified ? 'active' : 'disabled'}" data-property="${prop}">
+              <label>${prop}</label>
+              ${createPercentageInput(prop, currentValue)}
+            </div>
+          `;
+        } else {
+          return `
+            <div class="css-property ${isModified ? 'active' : 'disabled'}" data-property="${prop}">
+              <label>${prop}</label>
+              <input type="text" data-property="${prop}" value="${currentValue}" placeholder="Enter value" />
+            </div>
+          `;
+        }
+      }).join('');
+      
+      return `
+        <div class="property-group" data-group="${group.name}">
+          <div class="property-group-header" data-group="${group.name}">
+            <div class="property-group-indicator ${hasModifiedProperty ? 'active' : ''}"></div>
+            <div class="property-group-title">${group.name}</div>
+            <div class="property-group-toggle ${isCollapsed ? 'collapsed' : ''}">▼</div>
           </div>
-        `;
-      } else if (inputType === 'color') {
-        return `
-          <div class="css-property ${isModified ? 'active' : 'disabled'}" data-property="${prop}">
-            <label>${prop}</label>
-            ${createColorInput(prop, currentValue)}
+          <div class="property-group-content ${isCollapsed ? 'collapsed' : ''}">
+            ${propertiesHtml}
           </div>
-        `;
-      } else if (inputType === 'size') {
-        return `
-          <div class="css-property ${isModified ? 'active' : 'disabled'}" data-property="${prop}">
-            <label>${prop}</label>
-            ${createSizeInput(prop, currentValue)}
-          </div>
-        `;
-      } else if (inputType === 'number') {
-        return `
-          <div class="css-property ${isModified ? 'active' : 'disabled'}" data-property="${prop}">
-            <label>${prop}</label>
-            ${createPercentageInput(prop, currentValue)}
-          </div>
-        `;
-      } else {
-        return `
-          <div class="css-property ${isModified ? 'active' : 'disabled'}" data-property="${prop}">
-            <label>${prop}</label>
-            <input type="text" data-property="${prop}" value="${currentValue}" placeholder="Enter value" />
-          </div>
-        `;
-      }
+        </div>
+      `;
     }).join('');
 
     this.attachPropertyListeners(container);
+    this.attachGroupToggleListeners();
+  }
+
+  /**
+   * Attach event listeners for group toggle
+   */
+  private attachGroupToggleListeners(): void {
+    const headers = this.panel?.querySelectorAll('.property-group-header');
+    headers?.forEach(header => {
+      header.addEventListener('click', () => {
+        const groupName = header.getAttribute('data-group');
+        if (!groupName) return;
+        
+        const group = this.panel?.querySelector(`.property-group[data-group="${groupName}"]`);
+        const content = group?.querySelector('.property-group-content');
+        const toggle = header.querySelector('.property-group-toggle');
+        
+        if (this.collapsedGroups.has(groupName)) {
+          this.collapsedGroups.delete(groupName);
+          content?.classList.remove('collapsed');
+          toggle?.classList.remove('collapsed');
+        } else {
+          this.collapsedGroups.add(groupName);
+          content?.classList.add('collapsed');
+          toggle?.classList.add('collapsed');
+        }
+      });
+    });
   }
 
   /**
@@ -840,6 +951,9 @@ export class CSSEditorPanel {
         propertyElement.classList.remove('disabled');
         propertyElement.classList.add('active');
       }
+      
+      // Update group indicator if this is a common property
+      this.updateGroupIndicator(property);
     } else {
       this.currentStyles.delete(property);
       this.modifiedProperties.delete(property);
@@ -852,9 +966,34 @@ export class CSSEditorPanel {
           propertyElement.classList.add('disabled');
         }
       }
+      
+      // Update group indicator if this is a common property
+      this.updateGroupIndicator(property);
     }
     this.applyStyles();
     this.updatePreview();
+  }
+
+  /**
+   * Update group indicator for a property
+   */
+  private updateGroupIndicator(property: string): void {
+    // Find which group this property belongs to
+    const group = PROPERTY_GROUPS.find(g => g.properties.includes(property));
+    if (!group) return;
+    
+    // Check if any property in this group is modified
+    const hasModifiedProperty = group.properties.some(prop => this.modifiedProperties.has(prop));
+    
+    // Update the indicator
+    const indicator = this.panel?.querySelector(`.property-group[data-group="${group.name}"] .property-group-indicator`);
+    if (indicator) {
+      if (hasModifiedProperty) {
+        indicator.classList.add('active');
+      } else {
+        indicator.classList.remove('active');
+      }
+    }
   }
 
   /**

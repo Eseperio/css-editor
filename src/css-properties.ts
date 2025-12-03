@@ -30,6 +30,72 @@ export const COMMON_PROPERTIES = [
 ];
 
 /**
+ * Property groups for the common properties panel
+ */
+export interface PropertyGroup {
+  name: string;
+  properties: string[];
+}
+
+export const PROPERTY_GROUPS: PropertyGroup[] = [
+  {
+    name: 'Spacing',
+    properties: [
+      'margin',
+      'margin-top',
+      'margin-right',
+      'margin-bottom',
+      'margin-left',
+      'padding',
+      'padding-top',
+      'padding-right',
+      'padding-bottom',
+      'padding-left'
+    ]
+  },
+  {
+    name: 'Border',
+    properties: [
+      'border',
+      'border-width',
+      'border-style',
+      'border-color',
+      'border-radius'
+    ]
+  },
+  {
+    name: 'Size',
+    properties: [
+      'width',
+      'height'
+    ]
+  },
+  {
+    name: 'Typography',
+    properties: [
+      'color',
+      'font-size',
+      'font-weight',
+      'text-align'
+    ]
+  },
+  {
+    name: 'Layout',
+    properties: [
+      'display',
+      'position'
+    ]
+  },
+  {
+    name: 'Effects',
+    properties: [
+      'background-color',
+      'opacity'
+    ]
+  }
+];
+
+/**
  * CSS Properties grouped by category (for advanced settings)
  */
 export const CSS_PROPERTIES = {
