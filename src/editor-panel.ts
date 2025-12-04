@@ -1,4 +1,4 @@
-import { CSS_PROPERTIES, COMMON_PROPERTIES, PROPERTY_GROUPS, PropertyGroup, getPropertyValues, getAdvancedProperties } from './css-properties';
+import { CSS_PROPERTIES, COMMON_PROPERTIES, PROPERTY_GROUPS, PropertyGroup, getPropertyValues, getAdvancedProperties, SPACING_PROPERTIES } from './css-properties';
 import { 
   getPropertyInputType, 
   createColorInput, 
@@ -30,6 +30,7 @@ export class CSSEditorPanel {
   private collapsedGroups: Set<string> = new Set(
     PROPERTY_GROUPS.map(group => group.name)
   ); // Track collapsed property groups, default to collapsed
+  private expandedSpacing: Map<string, boolean> = new Map(); // Track expanded spacing properties (margin/padding)
   private options: CSSEditorOptions;
   private styleElement: HTMLStyleElement;
 
@@ -413,6 +414,53 @@ export class CSSEditorPanel {
         border-top: none;
       }
       
+      /* Spacing expand/collapse buttons */
+      .spacing-expand-btn {
+        background: none;
+        border: none;
+        color: #95a5a6;
+        cursor: pointer;
+        font-size: 16px;
+        padding: 0 4px;
+        margin-left: 6px;
+        transition: color 0.2s, transform 0.2s;
+        vertical-align: middle;
+      }
+      .spacing-expand-btn:hover {
+        color: #3498db;
+        transform: scale(1.2);
+      }
+      .spacing-collapse-container {
+        margin-top: 10px;
+        margin-bottom: 10px;
+        padding-top: 10px;
+        border-top: 1px solid #2c3e50;
+      }
+      .spacing-collapse-btn {
+        width: 100%;
+        padding: 8px 12px;
+        background: #7f8c8d;
+        border: none;
+        color: white;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        transition: background 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+      }
+      .spacing-collapse-btn:hover {
+        background: #95a5a6;
+      }
+      .css-property.spacing-side {
+        background: #2c3e50;
+        padding: 10px;
+        border-radius: 4px;
+        margin-bottom: 10px;
+      }
+      
       /* Property input styles */
       ${getPropertyInputStyles()}
     `;
@@ -478,63 +526,56 @@ export class CSSEditorPanel {
     if (!container) return;
 
     container.innerHTML = PROPERTY_GROUPS.map(group => {
-      // Check if any property in this group is modified
-      const hasModifiedProperty = group.properties.some(prop => this.modifiedProperties.has(prop));
+      // Check if any property in this group is modified (including side properties for spacing)
+      const hasModifiedProperty = group.properties.some(prop => {
+        if (this.modifiedProperties.has(prop)) return true;
+        // Check if any side properties are modified
+        const spacingProp = SPACING_PROPERTIES.find(sp => sp.general === prop);
+        if (spacingProp) {
+          return spacingProp.sides.some(side => this.modifiedProperties.has(side));
+        }
+        return false;
+      });
       const isCollapsed = this.collapsedGroups.has(group.name);
       
       // Generate properties HTML for this group
       const propertiesHtml = group.properties.map(prop => {
-        const currentValue = this.currentStyles.get(prop) || '';
-        const isModified = this.modifiedProperties.has(prop);
-        const suggestions = getPropertyValues(prop);
-        const inputType = getPropertyInputType(prop);
-        const trimmedValue = currentValue.trim();
-        const hasSuggestion = suggestions.includes(trimmedValue);
-        const isCustomValue = !!trimmedValue && !hasSuggestion;
+        // Check if this is a spacing property (margin/padding)
+        const spacingProp = SPACING_PROPERTIES.find(sp => sp.general === prop);
+        const isExpanded = this.expandedSpacing.get(prop) || false;
         
-        // If property has predefined suggestions (like display, position), use dropdown
-        if (suggestions.length > 0) {
-          return `
-            <div class="css-property ${isModified ? 'active' : 'disabled'}" data-property="${prop}">
-              <label>${prop}</label>
-              <select data-property="${prop}">
-                <option value="">-- Select --</option>
-                ${suggestions.map(val => 
-                  `<option value="${val}" ${trimmedValue === val ? 'selected' : ''}>${val}</option>`
-                ).join('')}
-                <option value="custom" ${isCustomValue ? 'selected' : ''}>Custom value...</option>
-              </select>
-              <input type="text" class="custom-property-input" data-property="${prop}" placeholder="Enter custom value" value="${isCustomValue ? trimmedValue : ''}" ${isCustomValue ? '' : 'style="display:none;"'} />
+        if (spacingProp && isExpanded) {
+          // Render individual side properties
+          return spacingProp.sides.map(sideProp => {
+            return this.renderPropertyInput(sideProp, true);
+          }).join('') + `
+            <div class="spacing-collapse-container">
+              <button class="spacing-collapse-btn" data-spacing="${prop}" title="Collapse to general">
+                ⚙️ Collapse to ${prop}
+              </button>
             </div>
           `;
-        } else if (inputType === 'color') {
+        } else if (spacingProp) {
+          // Render general spacing property with cog icon
+          const currentValue = this.currentStyles.get(prop) || '';
+          const isModified = this.modifiedProperties.has(prop) || 
+            spacingProp.sides.some(side => this.modifiedProperties.has(side));
+          const inputType = getPropertyInputType(prop);
+          
           return `
             <div class="css-property ${isModified ? 'active' : 'disabled'}" data-property="${prop}">
-              <label>${prop}</label>
-              ${createColorInput(prop, currentValue)}
-            </div>
-          `;
-        } else if (inputType === 'size') {
-          return `
-            <div class="css-property ${isModified ? 'active' : 'disabled'}" data-property="${prop}">
-              <label>${prop}</label>
-              ${createSizeInput(prop, currentValue)}
-            </div>
-          `;
-        } else if (inputType === 'number') {
-          return `
-            <div class="css-property ${isModified ? 'active' : 'disabled'}" data-property="${prop}">
-              <label>${prop}</label>
-              ${createPercentageInput(prop, currentValue)}
+              <label>
+                ${prop}
+                <button class="spacing-expand-btn" data-spacing="${prop}" title="Expand to individual sides">
+                  ⚙️
+                </button>
+              </label>
+              ${inputType === 'size' ? createSizeInput(prop, currentValue) : `<input type="text" data-property="${prop}" value="${currentValue}" placeholder="Enter value" />`}
             </div>
           `;
         } else {
-          return `
-            <div class="css-property ${isModified ? 'active' : 'disabled'}" data-property="${prop}">
-              <label>${prop}</label>
-              <input type="text" data-property="${prop}" value="${currentValue}" placeholder="Enter value" />
-            </div>
-          `;
+          // Render normal property
+          return this.renderPropertyInput(prop, false);
         }
       }).join('');
       
@@ -554,6 +595,145 @@ export class CSSEditorPanel {
 
     this.attachPropertyListeners(container);
     this.attachGroupToggleListeners();
+    this.attachSpacingToggleListeners();
+  }
+
+  /**
+   * Render a single property input
+   */
+  private renderPropertyInput(prop: string, isSpacingSide: boolean): string {
+    const currentValue = this.currentStyles.get(prop) || '';
+    const isModified = this.modifiedProperties.has(prop);
+    const suggestions = getPropertyValues(prop);
+    const inputType = getPropertyInputType(prop);
+    const trimmedValue = currentValue.trim();
+    const hasSuggestion = suggestions.includes(trimmedValue);
+    const isCustomValue = !!trimmedValue && !hasSuggestion;
+    
+    // If property has predefined suggestions (like display, position), use dropdown
+    if (suggestions.length > 0) {
+      return `
+        <div class="css-property ${isModified ? 'active' : 'disabled'} ${isSpacingSide ? 'spacing-side' : ''}" data-property="${prop}">
+          <label>${prop}</label>
+          <select data-property="${prop}">
+            <option value="">-- Select --</option>
+            ${suggestions.map(val => 
+              `<option value="${val}" ${trimmedValue === val ? 'selected' : ''}>${val}</option>`
+            ).join('')}
+            <option value="custom" ${isCustomValue ? 'selected' : ''}>Custom value...</option>
+          </select>
+          <input type="text" class="custom-property-input" data-property="${prop}" placeholder="Enter custom value" value="${isCustomValue ? trimmedValue : ''}" ${isCustomValue ? '' : 'style="display:none;"'} />
+        </div>
+      `;
+    } else if (inputType === 'color') {
+      return `
+        <div class="css-property ${isModified ? 'active' : 'disabled'} ${isSpacingSide ? 'spacing-side' : ''}" data-property="${prop}">
+          <label>${prop}</label>
+          ${createColorInput(prop, currentValue)}
+        </div>
+      `;
+    } else if (inputType === 'size') {
+      return `
+        <div class="css-property ${isModified ? 'active' : 'disabled'} ${isSpacingSide ? 'spacing-side' : ''}" data-property="${prop}">
+          <label>${prop}</label>
+          ${createSizeInput(prop, currentValue)}
+        </div>
+      `;
+    } else if (inputType === 'number') {
+      return `
+        <div class="css-property ${isModified ? 'active' : 'disabled'} ${isSpacingSide ? 'spacing-side' : ''}" data-property="${prop}">
+          <label>${prop}</label>
+          ${createPercentageInput(prop, currentValue)}
+        </div>
+      `;
+    } else {
+      return `
+        <div class="css-property ${isModified ? 'active' : 'disabled'} ${isSpacingSide ? 'spacing-side' : ''}" data-property="${prop}">
+          <label>${prop}</label>
+          <input type="text" data-property="${prop}" value="${currentValue}" placeholder="Enter value" />
+        </div>
+      `;
+    }
+  }
+
+  /**
+   * Attach event listeners for spacing toggle buttons
+   */
+  private attachSpacingToggleListeners(): void {
+    const expandButtons = this.panel?.querySelectorAll('.spacing-expand-btn');
+    expandButtons?.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const spacingProp = (e.target as HTMLElement).getAttribute('data-spacing');
+        if (spacingProp) {
+          this.expandSpacingProperty(spacingProp);
+        }
+      });
+    });
+
+    const collapseButtons = this.panel?.querySelectorAll('.spacing-collapse-btn');
+    collapseButtons?.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const spacingProp = (e.target as HTMLElement).getAttribute('data-spacing');
+        if (spacingProp) {
+          this.collapseSpacingProperty(spacingProp);
+        }
+      });
+    });
+  }
+
+  /**
+   * Expand a spacing property to show individual sides
+   */
+  private expandSpacingProperty(property: string): void {
+    const spacingProp = SPACING_PROPERTIES.find(sp => sp.general === property);
+    if (!spacingProp) return;
+
+    // Get the current value of the general property
+    const generalValue = this.currentStyles.get(property);
+    
+    // Apply the general value to all sides if it exists
+    if (generalValue && generalValue.trim() !== '') {
+      spacingProp.sides.forEach(side => {
+        this.currentStyles.set(side, generalValue);
+        this.modifiedProperties.add(side);
+      });
+    }
+    
+    // Remove the general property from modified properties
+    this.modifiedProperties.delete(property);
+    this.currentStyles.delete(property);
+    
+    // Mark as expanded
+    this.expandedSpacing.set(property, true);
+    
+    // Re-render and apply
+    this.renderCommonProperties();
+    this.applyStyles();
+    this.updatePreview();
+  }
+
+  /**
+   * Collapse individual spacing properties back to general
+   */
+  private collapseSpacingProperty(property: string): void {
+    const spacingProp = SPACING_PROPERTIES.find(sp => sp.general === property);
+    if (!spacingProp) return;
+
+    // Clear the side properties
+    spacingProp.sides.forEach(side => {
+      this.modifiedProperties.delete(side);
+      this.currentStyles.delete(side);
+    });
+    
+    // Mark as collapsed
+    this.expandedSpacing.set(property, false);
+    
+    // Re-render and apply
+    this.renderCommonProperties();
+    this.applyStyles();
+    this.updatePreview();
   }
 
   /**
