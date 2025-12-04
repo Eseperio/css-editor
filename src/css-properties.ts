@@ -56,9 +56,21 @@ export const PROPERTY_GROUPS: PropertyGroup[] = [
     ]
   },
   {
+    name: 'Background',
+    properties: [
+      'background',
+      'background-color',
+      'background-image',
+      'background-repeat',
+      'background-position',
+      'background-size',
+      'background-attachment',
+      'background-clip'
+    ]
+  },
+  {
     name: 'Effects',
     properties: [
-      'background-color',
       'opacity'
     ]
   }
@@ -160,7 +172,12 @@ export function getPropertyValues(property: string): string[] {
     'align-items': ['flex-start', 'flex-end', 'center', 'baseline', 'stretch'],
     'float': ['none', 'left', 'right'],
     'clear': ['none', 'left', 'right', 'both'],
-    'border-style': ['none', 'solid', 'dashed', 'dotted', 'double', 'groove', 'ridge', 'inset', 'outset']
+    'border-style': ['none', 'solid', 'dashed', 'dotted', 'double', 'groove', 'ridge', 'inset', 'outset'],
+    'background-repeat': ['repeat', 'repeat-x', 'repeat-y', 'no-repeat', 'space', 'round'],
+    'background-size': ['auto', 'cover', 'contain'],
+    'background-attachment': ['scroll', 'fixed', 'local'],
+    'background-position': ['left top', 'left center', 'left bottom', 'right top', 'right center', 'right bottom', 'center top', 'center center', 'center bottom'],
+    'background-clip': ['border-box', 'padding-box', 'content-box', 'text']
   };
 
   return commonValues[property] || [];

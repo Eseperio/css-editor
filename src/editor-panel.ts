@@ -27,7 +27,9 @@ export class CSSEditorPanel {
   private currentStyles: Map<string, string> = new Map();
   private modifiedProperties: Set<string> = new Set(); // Track user-modified properties
   private advancedProperties: Set<string> = new Set(); // Track added advanced properties
-  private collapsedGroups: Set<string> = new Set(); // Track collapsed property groups
+  private collapsedGroups: Set<string> = new Set(
+    PROPERTY_GROUPS.map(group => group.name)
+  ); // Track collapsed property groups, default to collapsed
   private options: CSSEditorOptions;
   private styleElement: HTMLStyleElement;
 
@@ -270,6 +272,9 @@ export class CSSEditorPanel {
         border-color: #3498db;
         background: #2c3e50;
       }
+      .custom-property-input {
+        margin-top: 8px;
+      }
       .css-property input:focus,
       .css-property select:focus {
         outline: none;
@@ -483,6 +488,9 @@ export class CSSEditorPanel {
         const isModified = this.modifiedProperties.has(prop);
         const suggestions = getPropertyValues(prop);
         const inputType = getPropertyInputType(prop);
+        const trimmedValue = currentValue.trim();
+        const hasSuggestion = suggestions.includes(trimmedValue);
+        const isCustomValue = !!trimmedValue && !hasSuggestion;
         
         // If property has predefined suggestions (like display, position), use dropdown
         if (suggestions.length > 0) {
@@ -492,10 +500,11 @@ export class CSSEditorPanel {
               <select data-property="${prop}">
                 <option value="">-- Select --</option>
                 ${suggestions.map(val => 
-                  `<option value="${val}" ${currentValue === val ? 'selected' : ''}>${val}</option>`
+                  `<option value="${val}" ${trimmedValue === val ? 'selected' : ''}>${val}</option>`
                 ).join('')}
-                <option value="custom">Custom value...</option>
+                <option value="custom" ${isCustomValue ? 'selected' : ''}>Custom value...</option>
               </select>
+              <input type="text" class="custom-property-input" data-property="${prop}" placeholder="Enter custom value" value="${isCustomValue ? trimmedValue : ''}" ${isCustomValue ? '' : 'style="display:none;"'} />
             </div>
           `;
         } else if (inputType === 'color') {
@@ -590,6 +599,9 @@ export class CSSEditorPanel {
       const currentValue = this.currentStyles.get(prop) || '';
       const suggestions = getPropertyValues(prop);
       const inputType = getPropertyInputType(prop);
+      const trimmedValue = currentValue.trim();
+      const hasSuggestion = suggestions.includes(trimmedValue);
+      const isCustomValue = !!trimmedValue && !hasSuggestion;
       
       // If property has predefined suggestions, use dropdown
       if (suggestions.length > 0) {
@@ -599,10 +611,11 @@ export class CSSEditorPanel {
             <select data-property="${prop}">
               <option value="">-- Select --</option>
               ${suggestions.map(val => 
-                `<option value="${val}" ${currentValue === val ? 'selected' : ''}>${val}</option>`
+                `<option value="${val}" ${trimmedValue === val ? 'selected' : ''}>${val}</option>`
               ).join('')}
-              <option value="custom">Custom value...</option>
+              <option value="custom" ${isCustomValue ? 'selected' : ''}>Custom value...</option>
             </select>
+            <input type="text" class="custom-property-input" data-property="${prop}" placeholder="Enter custom value" value="${isCustomValue ? trimmedValue : ''}" ${isCustomValue ? '' : 'style="display:none;"'} />
             <button class="property-remove-btn" data-remove="${prop}">Remove</button>
           </div>
         `;
@@ -675,15 +688,24 @@ export class CSSEditorPanel {
       } else if (target.tagName === 'SELECT') {
         // Handle regular property dropdowns
         target.addEventListener('change', () => {
+          const customInput = container.querySelector(`.custom-property-input[data-property="${property}"]`) as HTMLInputElement;
           if (target.value === 'custom') {
-            const customValue = prompt(`Enter custom value for ${property}:`);
-            if (customValue) {
-              this.updateProperty(property, customValue);
+            if (customInput) {
+              customInput.style.display = 'block';
+              customInput.focus();
             }
-            target.value = '';
+            return;
           } else {
+            if (customInput) {
+              customInput.style.display = 'none';
+              customInput.value = '';
+            }
             this.updateProperty(property, target.value);
           }
+        });
+      } else if (target.classList.contains('custom-property-input')) {
+        target.addEventListener('input', () => {
+          this.updateProperty(property, target.value);
         });
       } else if (target.classList.contains('color-picker')) {
         // Handle color picker

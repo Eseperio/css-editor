@@ -259,7 +259,7 @@ export function getPropertyInputStyles(): string {
       flex: 1;
       height: 6px;
       border-radius: 3px;
-      background: #34495e;
+      background: #1f2a36;
       outline: none;
       -webkit-appearance: none;
     }
@@ -324,7 +324,7 @@ export function getPropertyInputStyles(): string {
       flex: 1;
       height: 6px;
       border-radius: 3px;
-      background: #34495e;
+      background: #1f2a36;
       outline: none;
       -webkit-appearance: none;
     }
