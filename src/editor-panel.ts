@@ -4,9 +4,9 @@ import {
   createColorInput, 
   createSizeInput, 
   createPercentageInput, 
-  getPropertyInputStyles,
   parseCSSValue 
 } from './property-inputs';
+import './styles/editor-panel.scss';
 
 /**
  * CSS Editor Panel Interface
@@ -16,6 +16,7 @@ export interface CSSEditorOptions {
   saveEndpoint?: string;
   onSave?: (css: string) => void;
   onLoad?: () => Promise<string>;
+  stylesUrl?: string;
 }
 
 /**
@@ -138,333 +139,36 @@ export class CSSEditorPanel {
    * Add styles for the panel
    */
   private addPanelStyles(): void {
-    const style = document.createElement('style');
-    style.textContent = `
-      #css-editor-panel {
-        position: fixed;
-        top: 0;
-        right: 0;
-        width: 400px;
-        height: 100vh;
-        background: #2c3e50;
-        color: #ecf0f1;
-        box-shadow: -2px 0 10px rgba(0, 0, 0, 0.3);
-        z-index: 10000;
-        overflow-y: auto;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        display: none;
-      }
-      .css-editor-header {
-        padding: 20px;
-        background: #34495e;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        position: sticky;
-        top: 0;
-        z-index: 10;
-      }
-      .css-editor-header h3 {
-        margin: 0;
-        font-size: 20px;
-      }
-      .css-editor-close {
-        background: none;
-        border: none;
-        color: #ecf0f1;
-        font-size: 28px;
-        cursor: pointer;
-        padding: 0;
-        width: 30px;
-        height: 30px;
-        line-height: 1;
-      }
-      .css-editor-close:hover {
-        color: #e74c3c;
-      }
-      .css-editor-selector {
-        padding: 15px 20px;
-        background: #34495e;
-      }
-      .css-editor-selector label {
-        display: block;
-        margin-bottom: 5px;
-        font-size: 12px;
-        color: #95a5a6;
-      }
-      .selector-input {
-        width: 100%;
-        padding: 8px;
-        background: #2c3e50;
-        border: 1px solid #7f8c8d;
-        color: #ecf0f1;
-        border-radius: 4px;
-        font-family: 'Monaco', 'Courier New', monospace;
-        font-size: 12px;
-      }
-      .css-editor-content {
-        padding: 20px;
-        min-height: 300px;
-      }
-      .common-properties-section,
-      .advanced-properties-section {
-        margin-bottom: 25px;
-      }
-      .common-properties-section h4,
-      .advanced-properties-section h4 {
-        margin: 0 0 15px;
-        font-size: 14px;
-        color: #95a5a6;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-      }
-      .add-property-btn {
-        width: 100%;
-        padding: 12px;
-        background: #27ae60;
-        border: none;
-        color: white;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 14px;
-        font-weight: bold;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        transition: background 0.2s;
-        margin-bottom: 15px;
-      }
-      .add-property-btn:hover {
-        background: #229954;
-      }
-      .plus-icon {
-        font-size: 20px;
-        font-weight: bold;
-      }
-      .css-property {
-        margin-bottom: 15px;
-        transition: opacity 0.3s;
-      }
-      .css-property.disabled {
-        opacity: 0.5;
-      }
-      .css-property.active {
-        opacity: 1;
-      }
-      .css-property label {
-        display: block;
-        margin-bottom: 5px;
-        font-size: 13px;
-        color: #bdc3c7;
-      }
-      .css-property input:not(.color-picker):not(.size-slider):not(.size-number-input):not(.color-text-input):not(.percentage-slider):not(.percentage-number-input),
-      .css-property select:not(.size-unit-selector) {
-        width: 100%;
-        padding: 8px;
-        background: #34495e;
-        border: 1px solid #7f8c8d;
-        color: #ecf0f1;
-        border-radius: 4px;
-        font-size: 13px;
-      }
-      .css-property.active input:not(.color-picker):not(.size-slider):not(.size-number-input):not(.color-text-input):not(.percentage-slider):not(.percentage-number-input),
-      .css-property.active select:not(.size-unit-selector) {
-        border-color: #3498db;
-        background: #2c3e50;
-      }
-      .custom-property-input {
-        margin-top: 8px;
-      }
-      .css-property input:focus,
-      .css-property select:focus {
-        outline: none;
-        border-color: #3498db;
-      }
-      .property-remove-btn {
-        margin-top: 5px;
-        padding: 5px 10px;
-        background: #e74c3c;
-        border: none;
-        color: white;
-        border-radius: 3px;
-        cursor: pointer;
-        font-size: 11px;
-      }
-      .property-remove-btn:hover {
-        background: #c0392b;
-      }
-      .css-editor-footer {
-        padding: 15px 20px;
-        background: #34495e;
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        border-top: 2px solid #2c3e50;
-      }
-      .css-editor-footer button {
-        padding: 10px 15px;
-        background: #3498db;
-        border: none;
-        color: white;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 13px;
-        flex: 1;
-        min-width: 80px;
-        transition: background 0.2s;
-      }
-      .css-editor-footer button:hover {
-        background: #2980b9;
-      }
-      .css-editor-save {
-        background: #27ae60 !important;
-      }
-      .css-editor-save:hover {
-        background: #229954 !important;
-      }
-      .css-editor-clear {
-        background: #e74c3c !important;
-      }
-      .css-editor-clear:hover {
-        background: #c0392b !important;
-      }
-      .css-editor-preview {
-        padding: 20px;
-        background: #34495e;
-        border-top: 2px solid #2c3e50;
-      }
-      .css-editor-preview h4 {
-        margin: 0 0 10px;
-        font-size: 14px;
-        color: #95a5a6;
-      }
-      .css-output {
-        background: #2c3e50;
-        padding: 15px;
-        border-radius: 4px;
-        font-family: 'Monaco', 'Courier New', monospace;
-        font-size: 12px;
-        color: #1abc9c;
-        overflow-x: auto;
-        margin: 0;
-        max-height: 200px;
-        overflow-y: auto;
-      }
-      
-      /* Property group styles */
-      .property-group {
-        margin-bottom: 15px;
-        background: #34495e;
-        border-radius: 6px;
-        overflow: hidden;
-      }
-      .property-group-header {
-        display: flex;
-        align-items: center;
-        padding: 12px 15px;
-        cursor: pointer;
-        user-select: none;
-        transition: background 0.2s;
-        gap: 10px;
-      }
-      .property-group-header:hover {
-        background: #3d5568;
-      }
-      .property-group-indicator {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: transparent;
-        transition: background 0.2s;
-        flex-shrink: 0;
-      }
-      .property-group-indicator.active {
-        background: #3498db;
-        box-shadow: 0 0 8px rgba(52, 152, 219, 0.6);
-      }
-      .property-group-title {
-        flex: 1;
-        font-size: 13px;
-        font-weight: 600;
-        color: #ecf0f1;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-      }
-      .property-group-toggle {
-        font-size: 16px;
-        color: #95a5a6;
-        transition: transform 0.2s;
-        flex-shrink: 0;
-      }
-      .property-group-toggle.collapsed {
-        transform: rotate(-90deg);
-      }
-      .property-group-content {
-        padding: 15px;
-        border-top: 1px solid #2c3e50;
-        max-height: 2000px;
-        overflow: hidden;
-        transition: max-height 0.3s ease, padding 0.3s ease;
-      }
-      .property-group-content.collapsed {
-        max-height: 0;
-        padding-top: 0;
-        padding-bottom: 0;
-        border-top: none;
-      }
-      
-      /* Spacing expand/collapse buttons */
-      .spacing-expand-btn {
-        background: none;
-        border: none;
-        color: #95a5a6;
-        cursor: pointer;
-        font-size: 16px;
-        padding: 0 4px;
-        margin-left: 6px;
-        transition: color 0.2s, transform 0.2s;
-        vertical-align: middle;
-      }
-      .spacing-expand-btn:hover {
-        color: #3498db;
-        transform: scale(1.2);
-      }
-      .spacing-collapse-container {
-        margin-top: 10px;
-        margin-bottom: 10px;
-        padding-top: 10px;
-        border-top: 1px solid #2c3e50;
-      }
-      .spacing-collapse-btn {
-        width: 100%;
-        padding: 8px 12px;
-        background: #7f8c8d;
-        border: none;
-        color: white;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 12px;
-        transition: background 0.2s;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-      }
-      .spacing-collapse-btn:hover {
-        background: #95a5a6;
-      }
-      .css-property.spacing-side {
-        background: #2c3e50;
-        padding: 10px;
-        border-radius: 4px;
-        margin-bottom: 10px;
-      }
-      
-      /* Property input styles */
-      ${getPropertyInputStyles()}
-    `;
-    document.head.appendChild(style);
+    const existing = document.getElementById('css-editor-panel-stylesheet');
+    if (existing) return;
+
+    const link = document.createElement('link');
+    link.id = 'css-editor-panel-stylesheet';
+    link.rel = 'stylesheet';
+    link.href = this.resolveStylesheetUrl();
+    document.head.appendChild(link);
+  }
+
+  /**
+   * Try to resolve the stylesheet URL for the panel.
+   * Priority: explicit option -> sibling of script -> fallback relative path.
+   */
+  private resolveStylesheetUrl(): string {
+    if (this.options.stylesUrl) {
+      return this.options.stylesUrl;
+    }
+
+    const currentScript = document.currentScript as HTMLScriptElement | null;
+    if (currentScript?.src) {
+      return new URL('./css-editor.css', currentScript.src).href;
+    }
+
+    const scriptWithName = document.querySelector('script[src*="css-editor"]') as HTMLScriptElement | null;
+    if (scriptWithName?.src) {
+      return new URL('./css-editor.css', scriptWithName.src).href;
+    }
+
+    return 'css-editor.css';
   }
 
   /**
