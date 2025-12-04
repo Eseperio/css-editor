@@ -148,7 +148,7 @@ export class CSSEditorPanel {
         height: 100vh;
         background: #2c3e50;
         color: #ecf0f1;
-        box-shadow: -2px 0 10px rgba(0,0,0,0.3);
+        box-shadow: -2px 0 10px rgba(0, 0, 0, 0.3);
         z-index: 10000;
         overflow-y: auto;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -664,7 +664,7 @@ export class CSSEditorPanel {
     expandButtons?.forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        const spacingProp = (e.target as HTMLElement).getAttribute('data-spacing');
+        const spacingProp = (e.currentTarget as HTMLElement).getAttribute('data-spacing');
         if (spacingProp) {
           this.expandSpacingProperty(spacingProp);
         }
@@ -675,7 +675,7 @@ export class CSSEditorPanel {
     collapseButtons?.forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        const spacingProp = (e.target as HTMLElement).getAttribute('data-spacing');
+        const spacingProp = (e.currentTarget as HTMLElement).getAttribute('data-spacing');
         if (spacingProp) {
           this.collapseSpacingProperty(spacingProp);
         }
