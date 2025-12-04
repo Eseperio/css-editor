@@ -106,22 +106,24 @@ export class CSSEditorPanel {
           <button class="css-editor-close" title="Close">&times;</button>
         </div>
       </div>
-      <div class="css-editor-selector">
-        <label>Selector:</label>
-        <input type="text" class="selector-input" readonly />
-        <div class="selector-count" aria-live="polite"></div>
-      </div>
       <div class="css-editor-content">
-        <div class="common-properties-section">
-          <h4>Common Properties</h4>
-          <div class="common-properties"></div>
-        </div>
-        <div class="advanced-properties-section">
-          <h4>Advanced Properties</h4>
-          <button class="add-property-btn" title="Add Property">
-            <span class="plus-icon">+</span> Add Property
-          </button>
-          <div class="advanced-properties"></div>
+        <div class="properties-grid">
+          <div class="css-editor-selector">
+            <label>Selector:</label>
+            <input type="text" class="selector-input" readonly />
+            <div class="selector-count" aria-live="polite"></div>
+          </div>
+          <div class="common-properties-section">
+            <h4>Common Properties</h4>
+            <div class="common-properties"></div>
+          </div>
+          <div class="advanced-properties-section">
+            <h4>Advanced Properties</h4>
+            <button class="add-property-btn" title="Add Property">
+              <span class="plus-icon">+</span> Add Property
+            </button>
+            <div class="advanced-properties"></div>
+          </div>
         </div>
       </div>
       <div class="css-editor-footer">
