@@ -1,5 +1,6 @@
 import typescript from '@rollup/plugin-typescript';
 import resolve from '@rollup/plugin-node-resolve';
+import scss from 'rollup-plugin-scss';
 
 export default {
   input: 'src/index.ts',
@@ -18,6 +19,11 @@ export default {
   ],
   plugins: [
     resolve(),
+    scss({
+      output: 'dist/css-editor.css',
+      sourceMap: true,
+      sass: require('sass')
+    }),
     typescript({
       tsconfig: './tsconfig.json',
       declaration: true,
