@@ -6,20 +6,31 @@ export interface PropertyGroup {
   properties: string[];
 }
 
+/**
+ * Spacing properties that should have expandable controls
+ */
+export interface SpacingProperty {
+  general: string;
+  sides: string[];
+}
+
+export const SPACING_PROPERTIES: SpacingProperty[] = [
+  {
+    general: 'margin',
+    sides: ['margin-top', 'margin-right', 'margin-bottom', 'margin-left']
+  },
+  {
+    general: 'padding',
+    sides: ['padding-top', 'padding-right', 'padding-bottom', 'padding-left']
+  }
+];
+
 export const PROPERTY_GROUPS: PropertyGroup[] = [
   {
     name: 'Spacing',
     properties: [
       'margin',
-      'margin-top',
-      'margin-right',
-      'margin-bottom',
-      'margin-left',
-      'padding',
-      'padding-top',
-      'padding-right',
-      'padding-bottom',
-      'padding-left'
+      'padding'
     ]
   },
   {
