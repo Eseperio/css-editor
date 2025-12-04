@@ -2,6 +2,8 @@ import typescript from '@rollup/plugin-typescript';
 import resolve from '@rollup/plugin-node-resolve';
 import scss from 'rollup-plugin-scss';
 import * as sass from 'sass';
+import { writeFileSync, mkdirSync } from 'fs';
+import path from 'path';
 
 export default {
   input: 'src/index.ts',
@@ -21,9 +23,13 @@ export default {
   plugins: [
     resolve(),
     scss({
-      fileName: 'css-editor.css',
+      output: (styles) => {
+        const outPath = path.resolve('dist/css-editor.css');
+        mkdirSync(path.dirname(outPath), { recursive: true });
+        writeFileSync(outPath, styles);
+      },
       sourceMap: true,
-      sass: sass
+      sass
     }),
     typescript({
       tsconfig: './tsconfig.json',
