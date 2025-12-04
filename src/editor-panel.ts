@@ -31,6 +31,7 @@ export class CSSEditorPanel {
   private collapsedGroups: Set<string> = new Set(
     PROPERTY_GROUPS.map(group => group.name)
   ); // Track collapsed property groups, default to collapsed
+  private anchorPosition: 'right' | 'left' | 'top' | 'bottom' = 'right';
   private options: CSSEditorOptions;
   private styleElement: HTMLStyleElement;
 
@@ -56,6 +57,7 @@ export class CSSEditorPanel {
     
     this.updatePanel();
     this.panel!.style.display = 'block';
+    this.applyAnchorPosition();
   }
 
   /**
@@ -95,14 +97,19 @@ export class CSSEditorPanel {
   private createPanel(): void {
     this.panel = document.createElement('div');
     this.panel.id = 'css-editor-panel';
+    this.panel.classList.add(`anchor-${this.anchorPosition}`);
     this.panel.innerHTML = `
       <div class="css-editor-header">
         <h3>CSS Editor</h3>
-        <button class="css-editor-close" title="Close">&times;</button>
+        <div class="header-actions">
+          <button class="anchor-toggle" title="Cambiar posición del panel">⇔</button>
+          <button class="css-editor-close" title="Close">&times;</button>
+        </div>
       </div>
       <div class="css-editor-selector">
         <label>Selector:</label>
         <input type="text" class="selector-input" readonly />
+        <div class="selector-count" aria-live="polite"></div>
       </div>
       <div class="css-editor-content">
         <div class="common-properties-section">
@@ -180,6 +187,10 @@ export class CSSEditorPanel {
     const closeBtn = this.panel.querySelector('.css-editor-close');
     closeBtn?.addEventListener('click', () => this.hide());
 
+    // Anchor toggle button
+    const anchorBtn = this.panel.querySelector('.anchor-toggle');
+    anchorBtn?.addEventListener('click', () => this.cycleAnchorPosition());
+
     // Add property button
     const addPropertyBtn = this.panel.querySelector('.add-property-btn');
     addPropertyBtn?.addEventListener('click', () => this.showPropertySelector());
@@ -211,6 +222,25 @@ export class CSSEditorPanel {
     if (selectorInput) {
       selectorInput.value = this.currentSelector;
     }
+    const selectorCount = this.panel.querySelector('.selector-count') as HTMLElement | null;
+    if (selectorCount) {
+      let count = 0;
+      try {
+        count = this.currentSelector ? document.querySelectorAll(this.currentSelector).length : 0;
+      } catch {
+        count = 0;
+      }
+      if (count > 1) {
+        selectorCount.textContent = `${count} elementos coinciden con el selector`;
+        selectorCount.style.display = 'block';
+      } else if (count === 1) {
+        selectorCount.textContent = '';
+        selectorCount.style.display = 'none';
+      } else {
+        selectorCount.textContent = this.currentSelector ? 'Selector inválido' : '';
+        selectorCount.style.display = this.currentSelector ? 'block' : 'none';
+      }
+    }
 
     // Render common properties
     this.renderCommonProperties();
@@ -219,6 +249,27 @@ export class CSSEditorPanel {
     this.renderAdvancedProperties();
 
     this.updatePreview();
+  }
+
+  /**
+   * Cycle through anchor positions and update panel classes
+   */
+  private cycleAnchorPosition(): void {
+    const positions: Array<'right' | 'bottom' | 'left' | 'top'> = ['right', 'bottom', 'left', 'top'];
+    const currentIndex = positions.indexOf(this.anchorPosition);
+    const nextIndex = (currentIndex + 1) % positions.length;
+    this.anchorPosition = positions[nextIndex];
+    this.applyAnchorPosition();
+  }
+
+  /**
+   * Apply anchor position class to panel
+   */
+  private applyAnchorPosition(): void {
+    if (!this.panel) return;
+    const positions: Array<'right' | 'bottom' | 'left' | 'top'> = ['right', 'bottom', 'left', 'top'];
+    positions.forEach(pos => this.panel!.classList.remove(`anchor-${pos}`));
+    this.panel.classList.add(`anchor-${this.anchorPosition}`);
   }
 
   /**
