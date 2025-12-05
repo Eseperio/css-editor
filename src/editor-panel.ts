@@ -11,6 +11,7 @@ import {
   getFilterOption,
   formatFilterValue
 } from './property-inputs';
+import { setLocale, t, translateProperty, translatePropertyGroup, Locale } from './i18n';
 import './styles/editor-panel.scss';
 
 /**
@@ -24,6 +25,7 @@ export interface CSSEditorOptions {
   onChange?: (css: string) => void;
   stylesUrl?: string;
   fontFamilies?: string[];
+  locale?: Locale;
 }
 
 /**
@@ -45,6 +47,10 @@ export class CSSEditorPanel {
 
   constructor(options: CSSEditorOptions = {}) {
     this.options = options;
+    // Set locale if provided
+    if (options.locale) {
+      setLocale(options.locale);
+    }
     this.styleElement = document.createElement('style');
     this.styleElement.id = 'css-editor-dynamic-styles';
     document.head.appendChild(this.styleElement);
@@ -108,21 +114,21 @@ export class CSSEditorPanel {
     this.panel.classList.add(`anchor-${this.anchorPosition}`);
     this.panel.innerHTML = `
       <div class="css-editor-header">
-        <h3>CSS Editor</h3>
+        <h3>${t('ui.panel.title')}</h3>
         <div class="header-actions">
-          <select class="anchor-select" title="Posición del panel">
-            <option value="right">Derecha</option>
-            <option value="bottom">Abajo</option>
-            <option value="left">Izquierda</option>
-            <option value="top">Arriba</option>
+          <select class="anchor-select" title="${t('ui.panel.anchorPosition')}">
+            <option value="right">${t('ui.panel.anchorRight')}</option>
+            <option value="bottom">${t('ui.panel.anchorBottom')}</option>
+            <option value="left">${t('ui.panel.anchorLeft')}</option>
+            <option value="top">${t('ui.panel.anchorTop')}</option>
           </select>
-          <button class="css-editor-close" title="Close">&times;</button>
+          <button class="css-editor-close" title="${t('ui.panel.close')}">&times;</button>
         </div>
       </div>
       <div class="css-editor-content">
         <div class="properties-grid">
           <div class="css-editor-selector">
-            <label>Selector:</label>
+            <label>${t('ui.panel.selector')}:</label>
             <input type="text" class="selector-input" readonly />
             <div class="selector-count" aria-live="polite"></div>
           </div>
@@ -130,21 +136,21 @@ export class CSSEditorPanel {
             <div class="common-properties"></div>
           </div>
           <div class="advanced-properties-section">
-            <button class="add-property-btn" title="Add Property">
-              <span class="plus-icon">+</span> Add Property
+            <button class="add-property-btn" title="${t('ui.panel.addProperty')}">
+              <span class="plus-icon">+</span> ${t('ui.panel.addProperty')}
             </button>
             <div class="advanced-properties"></div>
           </div>
         </div>
       </div>
       <div class="css-editor-footer">
-        <button class="css-editor-save">Save CSS</button>
-        ${this.options.loadEndpoint ? '<button class="css-editor-load">Load CSS</button>' : ''}
-        <button class="css-editor-export">Export CSS</button>
-        <button class="css-editor-clear">Clear Changes</button>
+        <button class="css-editor-save">${t('ui.panel.saveCSS')}</button>
+        ${this.options.loadEndpoint ? `<button class="css-editor-load">${t('ui.panel.loadCSS')}</button>` : ''}
+        <button class="css-editor-export">${t('ui.panel.exportCSS')}</button>
+        <button class="css-editor-clear">${t('ui.panel.clearChanges')}</button>
       </div>
       <div class="css-editor-preview">
-        <h4>Generated CSS:</h4>
+        <h4>${t('ui.panel.generatedCSS')}</h4>
         <pre class="css-output"></pre>
       </div>
     `;
@@ -250,13 +256,13 @@ export class CSSEditorPanel {
         count = 0;
       }
       if (count > 1) {
-        selectorCount.textContent = `${count} elementos coinciden con el selector`;
+        selectorCount.textContent = t('ui.panel.selectorMatchCount', { count: count.toString() });
         selectorCount.style.display = 'block';
       } else if (count === 1) {
         selectorCount.textContent = '';
         selectorCount.style.display = 'none';
       } else {
-        selectorCount.textContent = this.currentSelector ? 'Selector inválido' : '';
+        selectorCount.textContent = this.currentSelector ? t('ui.panel.selectorInvalid') : '';
         selectorCount.style.display = this.currentSelector ? 'block' : 'none';
       }
     }
@@ -324,8 +330,8 @@ export class CSSEditorPanel {
             return this.renderPropertyInput(sideProp, true);
           }).join('') + `
             <div class="spacing-collapse-container">
-              <button class="spacing-collapse-btn" data-spacing="${prop}" title="Collapse to general">
-                ⚙️ Collapse to ${prop}
+              <button class="spacing-collapse-btn" data-spacing="${prop}" title="${t('ui.spacing.collapseToGeneral', { property: translateProperty(prop) })}">
+                ⚙️ ${t('ui.spacing.collapseToGeneral', { property: translateProperty(prop) })}
               </button>
             </div>
           `;
@@ -339,12 +345,12 @@ export class CSSEditorPanel {
           return `
             <div class="css-property ${isModified ? 'active' : 'disabled'}" data-property="${prop}">
               <label>
-                ${prop}
-                <button class="spacing-expand-btn" data-spacing="${prop}" title="Expand to individual sides">
+                ${translateProperty(prop)}
+                <button class="spacing-expand-btn" data-spacing="${prop}" title="${t('ui.spacing.expandToSides')}">
                   ⚙️
                 </button>
               </label>
-              ${inputType === 'size' ? createSizeInput(prop, currentValue) : `<input type="text" data-property="${prop}" value="${currentValue}" placeholder="Enter value" />`}
+              ${inputType === 'size' ? createSizeInput(prop, currentValue) : `<input type="text" data-property="${prop}" value="${currentValue}" placeholder="${t('ui.inputs.enterValue')}" />`}
             </div>
           `;
         } else {
@@ -357,7 +363,7 @@ export class CSSEditorPanel {
         <div class="property-group" data-group="${group.name}">
           <div class="property-group-header" data-group="${group.name}">
             <div class="property-group-indicator ${hasModifiedProperty ? 'active' : ''}"></div>
-            <div class="property-group-title">${group.name}</div>
+            <div class="property-group-title">${translatePropertyGroup(group.name)}</div>
             <div class="property-group-toggle ${isCollapsed ? 'collapsed' : ''}">▼</div>
           </div>
           <div class="property-group-content ${isCollapsed ? 'collapsed' : ''}">
@@ -394,55 +400,56 @@ export class CSSEditorPanel {
     const trimmedValue = currentValue.trim();
     const hasSuggestion = suggestions.includes(trimmedValue);
     const isCustomValue = !!trimmedValue && !hasSuggestion;
+    const translatedProp = translateProperty(prop);
     
     // If property has predefined suggestions (like display, position), use dropdown
     if (suggestions.length > 0) {
       return `
         <div class="css-property ${isModified ? 'active' : 'disabled'} ${isSpacingSide ? 'spacing-side' : ''}" data-property="${prop}">
-          <label>${prop}</label>
+          <label>${translatedProp}</label>
           <select data-property="${prop}">
-            <option value="">-- Select --</option>
+            <option value="">${t('ui.inputs.selectOption')}</option>
             ${suggestions.map(val => 
               `<option value="${val}" ${trimmedValue === val ? 'selected' : ''}>${val}</option>`
             ).join('')}
-            <option value="custom" ${isCustomValue ? 'selected' : ''}>Custom value...</option>
+            <option value="custom" ${isCustomValue ? 'selected' : ''}>${t('ui.inputs.customValue')}</option>
           </select>
-          <input type="text" class="custom-property-input" data-property="${prop}" placeholder="Enter custom value" value="${isCustomValue ? trimmedValue : ''}" ${isCustomValue ? '' : 'style="display:none;"'} />
+          <input type="text" class="custom-property-input" data-property="${prop}" placeholder="${t('ui.inputs.enterCustomValue')}" value="${isCustomValue ? trimmedValue : ''}" ${isCustomValue ? '' : 'style="display:none;"'} />
         </div>
       `;
     } else if (inputType === 'color') {
       return `
         <div class="css-property ${isModified ? 'active' : 'disabled'} ${isSpacingSide ? 'spacing-side' : ''}" data-property="${prop}">
-          <label>${prop}</label>
+          <label>${translatedProp}</label>
           ${createColorInput(prop, currentValue)}
         </div>
       `;
     } else if (inputType === 'size') {
       return `
         <div class="css-property ${isModified ? 'active' : 'disabled'} ${isSpacingSide ? 'spacing-side' : ''}" data-property="${prop}">
-          <label>${prop}</label>
+          <label>${translatedProp}</label>
           ${createSizeInput(prop, currentValue)}
         </div>
       `;
     } else if (inputType === 'filter') {
       return `
         <div class="css-property ${isModified ? 'active' : 'disabled'} ${isSpacingSide ? 'spacing-side' : ''}" data-property="${prop}">
-          <label>${prop}</label>
+          <label>${translatedProp}</label>
           ${createFilterInput(prop, currentValue)}
         </div>
       `;
     } else if (inputType === 'number') {
       return `
         <div class="css-property ${isModified ? 'active' : 'disabled'} ${isSpacingSide ? 'spacing-side' : ''}" data-property="${prop}">
-          <label>${prop}</label>
+          <label>${translatedProp}</label>
           ${createPercentageInput(prop, currentValue)}
         </div>
       `;
     } else {
       return `
         <div class="css-property ${isModified ? 'active' : 'disabled'} ${isSpacingSide ? 'spacing-side' : ''}" data-property="${prop}">
-          <label>${prop}</label>
-          <input type="text" data-property="${prop}" value="${currentValue}" placeholder="Enter value" />
+          <label>${translatedProp}</label>
+          <input type="text" data-property="${prop}" value="${currentValue}" placeholder="${t('ui.inputs.enterValue')}" />
         </div>
       `;
     }
@@ -574,53 +581,54 @@ export class CSSEditorPanel {
       const trimmedValue = currentValue.trim();
       const hasSuggestion = suggestions.includes(trimmedValue);
       const isCustomValue = !!trimmedValue && !hasSuggestion;
+      const translatedProp = translateProperty(prop);
       
       // If property has predefined suggestions, use dropdown
       if (suggestions.length > 0) {
         return `
           <div class="css-property active" data-property="${prop}">
-            <label>${prop}</label>
+            <label>${translatedProp}</label>
             <select data-property="${prop}">
-              <option value="">-- Select --</option>
+              <option value="">${t('ui.inputs.selectOption')}</option>
               ${suggestions.map(val => 
                 `<option value="${val}" ${trimmedValue === val ? 'selected' : ''}>${val}</option>`
               ).join('')}
-              <option value="custom" ${isCustomValue ? 'selected' : ''}>Custom value...</option>
+              <option value="custom" ${isCustomValue ? 'selected' : ''}>${t('ui.inputs.customValue')}</option>
             </select>
-            <input type="text" class="custom-property-input" data-property="${prop}" placeholder="Enter custom value" value="${isCustomValue ? trimmedValue : ''}" ${isCustomValue ? '' : 'style="display:none;"'} />
-            <button class="property-remove-btn" data-remove="${prop}">Remove</button>
+            <input type="text" class="custom-property-input" data-property="${prop}" placeholder="${t('ui.inputs.enterCustomValue')}" value="${isCustomValue ? trimmedValue : ''}" ${isCustomValue ? '' : 'style="display:none;"'} />
+            <button class="property-remove-btn" data-remove="${prop}">${t('ui.inputs.remove')}</button>
           </div>
         `;
       } else if (inputType === 'color') {
         return `
           <div class="css-property active" data-property="${prop}">
-            <label>${prop}</label>
+            <label>${translatedProp}</label>
             ${createColorInput(prop, currentValue)}
-            <button class="property-remove-btn" data-remove="${prop}">Remove</button>
+            <button class="property-remove-btn" data-remove="${prop}">${t('ui.inputs.remove')}</button>
           </div>
         `;
       } else if (inputType === 'size') {
         return `
           <div class="css-property active" data-property="${prop}">
-            <label>${prop}</label>
+            <label>${translatedProp}</label>
             ${createSizeInput(prop, currentValue)}
-            <button class="property-remove-btn" data-remove="${prop}">Remove</button>
+            <button class="property-remove-btn" data-remove="${prop}">${t('ui.inputs.remove')}</button>
           </div>
         `;
       } else if (inputType === 'number') {
         return `
           <div class="css-property active" data-property="${prop}">
-            <label>${prop}</label>
+            <label>${translatedProp}</label>
             ${createPercentageInput(prop, currentValue)}
-            <button class="property-remove-btn" data-remove="${prop}">Remove</button>
+            <button class="property-remove-btn" data-remove="${prop}">${t('ui.inputs.remove')}</button>
           </div>
         `;
       } else {
         return `
           <div class="css-property active" data-property="${prop}">
-            <label>${prop}</label>
-            <input type="text" data-property="${prop}" value="${currentValue}" placeholder="Enter value" />
-            <button class="property-remove-btn" data-remove="${prop}">Remove</button>
+            <label>${translatedProp}</label>
+            <input type="text" data-property="${prop}" value="${currentValue}" placeholder="${t('ui.inputs.enterValue')}" />
+            <button class="property-remove-btn" data-remove="${prop}">${t('ui.inputs.remove')}</button>
           </div>
         `;
       }
@@ -858,7 +866,7 @@ export class CSSEditorPanel {
     );
 
     if (availableProperties.length === 0) {
-      alert('All advanced properties have been added!');
+      alert(t('ui.propertySelector.allAdded'));
       return;
     }
 
@@ -867,14 +875,14 @@ export class CSSEditorPanel {
     modal.className = 'property-selector-modal';
     modal.innerHTML = `
       <div class="property-selector-content">
-        <h3>Select Property to Add</h3>
-        <input type="text" class="property-search" placeholder="Search properties..." />
+        <h3>${t('ui.propertySelector.title')}</h3>
+        <input type="text" class="property-search" placeholder="${t('ui.propertySelector.search')}" />
         <div class="property-list">
           ${availableProperties.map(prop => 
-            `<button class="property-option" data-property="${prop}">${prop}</button>`
+            `<button class="property-option" data-property="${prop}">${translateProperty(prop)}</button>`
           ).join('')}
         </div>
-        <button class="modal-close">Cancel</button>
+        <button class="modal-close">${t('ui.propertySelector.cancel')}</button>
       </div>
     `;
 
@@ -1118,7 +1126,7 @@ export class CSSEditorPanel {
     const preview = this.panel?.querySelector('.css-output');
     if (preview) {
       const css = this.generateCSS();
-      preview.textContent = css || '/* No styles applied yet */';
+      preview.textContent = css || t('ui.panel.noStyles');
     }
   }
 
@@ -1146,13 +1154,13 @@ export class CSSEditorPanel {
         });
         
         if (response.ok) {
-          alert('CSS saved successfully!');
+          alert(t('ui.messages.cssSaved'));
         } else {
-          alert('Failed to save CSS');
+          alert(t('ui.messages.failedSave'));
         }
       } catch (error) {
         console.error('Error saving CSS:', error);
-        alert('Error saving CSS');
+        alert(t('ui.messages.errorSave'));
       }
     }
     
@@ -1184,7 +1192,7 @@ export class CSSEditorPanel {
     
     if (css) {
       this.styleElement.textContent = css;
-      alert('CSS loaded successfully!');
+      alert(t('ui.messages.cssLoaded'));
     }
   }
 
@@ -1196,9 +1204,9 @@ export class CSSEditorPanel {
     
     if (navigator.clipboard && window.isSecureContext) {
       navigator.clipboard.writeText(css).then(() => {
-        alert('CSS copied to clipboard!');
+        alert(t('ui.messages.cssCopied'));
       }).catch((err) => {
-        console.error('Failed to copy:', err);
+        console.error(t('ui.messages.failedCopy'), err);
         this.showCSSInModal(css);
       });
     } else {
@@ -1240,7 +1248,7 @@ export class CSSEditorPanel {
     textarea.readOnly = true;
     
     const closeBtn = document.createElement('button');
-    closeBtn.textContent = 'Close';
+    closeBtn.textContent = t('ui.panel.close');
     closeBtn.style.cssText = `
       padding: 10px 20px;
       background: #3498db;
@@ -1252,7 +1260,7 @@ export class CSSEditorPanel {
     closeBtn.onclick = () => modal.remove();
     
     const message = document.createElement('p');
-    message.textContent = 'Copy the CSS below manually:';
+    message.textContent = t('ui.messages.copyManually');
     message.style.margin = '0 0 10px 0';
     
     modal.appendChild(message);
@@ -1268,7 +1276,7 @@ export class CSSEditorPanel {
    * Clear all changes
    */
   private clearChanges(): void {
-    if (confirm('Are you sure you want to clear all changes?')) {
+    if (confirm(t('ui.messages.confirmClear'))) {
       this.currentStyles.clear();
       this.modifiedProperties.clear();
       this.advancedProperties.clear();

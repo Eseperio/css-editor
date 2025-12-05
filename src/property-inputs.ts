@@ -3,6 +3,8 @@
  * Provides user-friendly inputs like color pickers, sliders, and unit selectors
  */
 
+import { t } from './i18n';
+
 /**
  * Property types that determine which input control to use
  */
@@ -28,18 +30,23 @@ export interface FilterOption {
 
 export type FilterType = 'none' | 'blur' | 'grayscale' | 'sepia' | 'brightness' | 'contrast' | 'saturate' | 'invert' | 'hue-rotate' | 'custom';
 
-export const FILTER_OPTIONS: FilterOption[] = [
-  { type: 'none', label: 'Sin filtro', unit: '', min: 0, max: 0, step: 0, defaultValue: 0 },
-  { type: 'blur', label: 'Desenfoque', unit: 'px', min: 0, max: 20, step: 0.5, defaultValue: 5 },
-  { type: 'grayscale', label: 'Escala de grises', unit: '%', min: 0, max: 100, step: 1, defaultValue: 50 },
-  { type: 'sepia', label: 'Sepia', unit: '%', min: 0, max: 100, step: 1, defaultValue: 40 },
-  { type: 'brightness', label: 'Brillo', unit: '%', min: 0, max: 200, step: 1, defaultValue: 100 },
-  { type: 'contrast', label: 'Contraste', unit: '%', min: 0, max: 200, step: 1, defaultValue: 100 },
-  { type: 'saturate', label: 'Saturación', unit: '%', min: 0, max: 200, step: 1, defaultValue: 100 },
-  { type: 'invert', label: 'Invertir', unit: '%', min: 0, max: 100, step: 1, defaultValue: 0 },
-  { type: 'hue-rotate', label: 'Tono (Hue)', unit: 'deg', min: 0, max: 360, step: 1, defaultValue: 0 },
-  { type: 'custom', label: 'Personalizado', unit: '', min: 0, max: 0, step: 0, defaultValue: 0 }
-];
+/**
+ * Get filter options with translated labels
+ */
+export function getFilterOptions(): FilterOption[] {
+  return [
+    { type: 'none', label: t('ui.filters.none'), unit: '', min: 0, max: 0, step: 0, defaultValue: 0 },
+    { type: 'blur', label: t('ui.filters.blur'), unit: 'px', min: 0, max: 20, step: 0.5, defaultValue: 5 },
+    { type: 'grayscale', label: t('ui.filters.grayscale'), unit: '%', min: 0, max: 100, step: 1, defaultValue: 50 },
+    { type: 'sepia', label: t('ui.filters.sepia'), unit: '%', min: 0, max: 100, step: 1, defaultValue: 40 },
+    { type: 'brightness', label: t('ui.filters.brightness'), unit: '%', min: 0, max: 200, step: 1, defaultValue: 100 },
+    { type: 'contrast', label: t('ui.filters.contrast'), unit: '%', min: 0, max: 200, step: 1, defaultValue: 100 },
+    { type: 'saturate', label: t('ui.filters.saturate'), unit: '%', min: 0, max: 200, step: 1, defaultValue: 100 },
+    { type: 'invert', label: t('ui.filters.invert'), unit: '%', min: 0, max: 100, step: 1, defaultValue: 0 },
+    { type: 'hue-rotate', label: t('ui.filters.hueRotate'), unit: 'deg', min: 0, max: 360, step: 1, defaultValue: 0 },
+    { type: 'custom', label: t('ui.filters.custom'), unit: '', min: 0, max: 0, step: 0, defaultValue: 0 }
+  ];
+}
 
 /**
  * Properties that should use color picker
@@ -159,7 +166,7 @@ export function createColorInput(property: string, value: string): string {
              class="color-picker" 
              data-property="${property}" 
              value="${hexValue}" 
-             title="Pick a color" />
+             title="${t('ui.inputs.pickColor')}" />
       <input type="text" 
              class="color-text-input" 
              data-property="${property}" 
@@ -186,7 +193,7 @@ export function createSizeInput(property: string, value: string): string {
              max="100" 
              step="0.1"
              value="${sliderValue}" 
-             title="Adjust value" />
+             title="${t('ui.inputs.adjustValue')}" />
       <input type="number" 
              class="size-number-input" 
              data-property="${property}"
@@ -207,7 +214,8 @@ export function createSizeInput(property: string, value: string): string {
  */
 export function createFilterInput(property: string, value: string): string {
   const parsed = parseFilterValue(value);
-  const active = getFilterOption(parsed.type) || FILTER_OPTIONS[0];
+  const filterOptions = getFilterOptions();
+  const active = getFilterOption(parsed.type) || filterOptions[0];
   const isCustom = parsed.type === 'custom';
   const showControls = parsed.type !== 'none' && parsed.type !== 'custom';
   const sliderValue = showControls ? parsed.value : active.defaultValue;
@@ -215,7 +223,7 @@ export function createFilterInput(property: string, value: string): string {
   return `
     <div class="property-input-group filter-input-group">
       <select class="filter-select" data-property="${property}">
-        ${FILTER_OPTIONS.map(opt => `
+        ${filterOptions.map(opt => `
           <option 
             value="${opt.type}" 
             data-unit="${opt.unit}" 
@@ -258,8 +266,9 @@ export function createFilterInput(property: string, value: string): string {
 
 export function parseFilterValue(value: string): { type: FilterType; value: number; unit: string; raw: string } {
   const raw = (value || '').trim();
+  const filterOptions = getFilterOptions();
   if (!raw) {
-    const defaultOption = FILTER_OPTIONS.find(o => o.type === 'blur')!;
+    const defaultOption = filterOptions.find(o => o.type === 'blur')!;
     return { type: 'blur', value: defaultOption.defaultValue, unit: defaultOption.unit, raw: formatFilterValue('blur', defaultOption.defaultValue, defaultOption.unit) };
   }
   if (raw === 'none') {
@@ -287,7 +296,7 @@ export function formatFilterValue(type: FilterType, value: number, unit: string)
 }
 
 export function getFilterOption(type: FilterType): FilterOption | undefined {
-  return FILTER_OPTIONS.find(opt => opt.type === type);
+  return getFilterOptions().find(opt => opt.type === type);
 }
 
 /** 
@@ -346,7 +355,7 @@ export function createPercentageInput(property: string, value: string): string {
              max="${max}" 
              step="${step}"
              value="${numValue}" 
-             title="Adjust ${property}" />
+             title="${t('ui.inputs.adjustValue')}" />
       <input type="number" 
              class="percentage-number-input" 
              data-property="${property}"

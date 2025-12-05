@@ -1,5 +1,6 @@
 import typescript from '@rollup/plugin-typescript';
 import resolve from '@rollup/plugin-node-resolve';
+import json from '@rollup/plugin-json';
 import scss from 'rollup-plugin-scss';
 import * as sass from 'sass';
 import { writeFileSync, mkdirSync } from 'fs';
@@ -22,6 +23,7 @@ export default {
   ],
   plugins: [
     resolve(),
+    json(),
     scss({
       output: (styles) => {
         const outPath = path.resolve('dist/css-editor.css');
