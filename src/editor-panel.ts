@@ -44,6 +44,7 @@ export class CSSEditorPanel {
   private anchorPosition: 'right' | 'left' | 'top' | 'bottom' = 'right';
   private options: CSSEditorOptions;
   private styleElement: HTMLStyleElement;
+  private theme: 'light' | 'dark' = 'light'; // Theme state
 
   constructor(options: CSSEditorOptions = {}) {
     this.options = options;
@@ -54,6 +55,12 @@ export class CSSEditorPanel {
     this.styleElement = document.createElement('style');
     this.styleElement.id = 'css-editor-dynamic-styles';
     document.head.appendChild(this.styleElement);
+    
+    // Load saved theme preference
+    const savedTheme = localStorage.getItem('css-editor-theme') as 'light' | 'dark' | null;
+    if (savedTheme) {
+      this.theme = savedTheme;
+    }
   }
 
   /**
@@ -122,8 +129,10 @@ export class CSSEditorPanel {
     
     this.panel.innerHTML = `
       <div class="css-editor-header">
-        <h3>${t('ui.panel.title')}</h3>
         <div class="header-actions">
+          <button class="theme-toggle" title="Toggle theme">
+            <span class="theme-icon">${this.theme === 'dark' ? '☀️' : '🌙'}</span>
+          </button>
           <select class="locale-select" title="${t('ui.panel.language')}">
             ${localeOptions}
           </select>
@@ -167,6 +176,7 @@ export class CSSEditorPanel {
     `;
 
     this.addPanelStyles();
+    this.applyTheme(); // Apply theme on creation
     this.attachEventListeners();
     document.body.appendChild(this.panel);
   }
@@ -216,6 +226,10 @@ export class CSSEditorPanel {
     // Close button
     const closeBtn = this.panel.querySelector('.css-editor-close');
     closeBtn?.addEventListener('click', () => this.hide());
+
+    // Theme toggle button
+    const themeToggleBtn = this.panel.querySelector('.theme-toggle');
+    themeToggleBtn?.addEventListener('click', () => this.toggleTheme());
 
     // Locale selector
     const localeSelect = this.panel.querySelector('.locale-select') as HTMLSelectElement | null;
@@ -339,6 +353,34 @@ export class CSSEditorPanel {
     
     // Ensure the recreated panel is visible
     this.panel!.style.display = 'block';
+  }
+
+  /**
+   * Toggle between light and dark theme
+   */
+  private toggleTheme(): void {
+    this.theme = this.theme === 'light' ? 'dark' : 'light';
+    localStorage.setItem('css-editor-theme', this.theme);
+    this.applyTheme();
+    
+    // Update theme toggle icon
+    const themeIcon = this.panel?.querySelector('.theme-icon');
+    if (themeIcon) {
+      themeIcon.textContent = this.theme === 'dark' ? '☀️' : '🌙';
+    }
+  }
+
+  /**
+   * Apply the current theme to the panel
+   */
+  private applyTheme(): void {
+    if (!this.panel) return;
+    
+    if (this.theme === 'dark') {
+      this.panel.classList.add('theme-dark');
+    } else {
+      this.panel.classList.remove('theme-dark');
+    }
   }
 
   /**

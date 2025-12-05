@@ -18,6 +18,8 @@ const server = http.createServer((req, res) => {
   let filePath = '.' + req.url;
   if (filePath === './') {
     filePath = './example/index.html';
+  } else if (filePath.endsWith('/')) {
+    filePath = filePath + 'index.html';
   }
 
   const extname = String(path.extname(filePath)).toLowerCase();
