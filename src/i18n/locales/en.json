@@ -21,6 +21,15 @@
       "anchorBottom": "Bottom",
       "language": "Language"
     },
+    "selectorConfig": {
+      "children": "Children",
+      "descendants": "All descendants",
+      "all": "All",
+      "even": "Even",
+      "odd": "Odd",
+      "position": "Position {n}",
+      "onlyPosition": "Only position {n}"
+    },
     "propertySelector": {
       "title": "Select Property to Add",
       "search": "Search properties...",

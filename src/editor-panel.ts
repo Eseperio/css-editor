@@ -30,11 +30,23 @@ export interface CSSEditorOptions {
 }
 
 /**
+ * Interface for selector part
+ */
+interface SelectorPart {
+  selector: string;
+  combinator: '>' | ' '; // > for children, space for descendants
+  positionType: 'all' | 'even' | 'odd' | 'position';
+  positionValue?: number; // Only used when positionType is 'position'
+  siblingCount?: number; // Total number of siblings of this type
+}
+
+/**
  * CSS Editor Panel class
  */
 export class CSSEditorPanel {
   private panel: HTMLElement | null = null;
   private currentSelector: string = '';
+  private currentElement: Element | null = null; // Store current element for selector refinement
   private currentStyles: Map<string, string> = new Map();
   private modifiedProperties: Set<string> = new Set(); // Track user-modified properties
   private advancedProperties: Set<string> = new Set(); // Track added advanced properties
@@ -48,6 +60,9 @@ export class CSSEditorPanel {
   private theme: 'light' | 'dark' = 'light'; // Theme state
   // Task 3: Store all element changes across different elements
   private allElementChanges: Map<string, { styles: Map<string, string>, modifiedProperties: Set<string> }> = new Map();
+  // Task 4: Selector configuration
+  private selectorParts: SelectorPart[] = [];
+  private selectorConfigExpanded: boolean = false;
 
   constructor(options: CSSEditorOptions = {}) {
     this.options = options;
@@ -74,7 +89,11 @@ export class CSSEditorPanel {
     this.saveCurrentElementChanges();
     
     this.currentSelector = selector;
+    this.currentElement = element; // Task 4: Store element for selector refinement
     this.loadCurrentStyles(element);
+    
+    // Task 4: Parse selector into parts
+    this.parseSelectorIntoParts(selector, element);
     
     // Task 3: Load previous changes for this element if they exist
     this.loadPreviousElementChanges(selector);
@@ -190,9 +209,13 @@ export class CSSEditorPanel {
       <div class="css-editor-content">
         <div class="properties-grid">
           <div class="css-editor-selector">
-            <label>${t('ui.panel.selector')}:</label>
+            <div class="selector-header">
+              <label>${t('ui.panel.selector')}:</label>
+              <button class="selector-config-toggle" title="Configure selector">⚙️</button>
+            </div>
             <input type="text" class="selector-input" readonly />
             <div class="selector-count" aria-live="polite"></div>
+            <div class="selector-config-panel" style="display: none;"></div>
           </div>
           <div class="common-properties-section">
             <div class="common-properties"></div>
@@ -311,6 +334,10 @@ export class CSSEditorPanel {
     // Clear button
     const clearBtn = this.panel.querySelector('.css-editor-clear');
     clearBtn?.addEventListener('click', () => this.clearChanges());
+
+    // Task 4: Selector config toggle button
+    const selectorConfigToggle = this.panel.querySelector('.selector-config-toggle');
+    selectorConfigToggle?.addEventListener('click', () => this.toggleSelectorConfig());
   }
 
   /**
@@ -1436,6 +1463,290 @@ export class CSSEditorPanel {
    */
   private capitalize(str: string): string {
     return str.charAt(0).toUpperCase() + str.slice(1);
+  }
+
+  /**
+   * Task 4: Parse selector into parts for configuration
+   */
+  private parseSelectorIntoParts(selector: string, element: Element): void {
+    this.selectorParts = [];
+    
+    // Split by > or space (but preserve them)
+    const parts = selector.split(/(\s+>|\s+)/);
+    let currentElement = element;
+    
+    // Process in reverse (from element to root)
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const part = parts[i].trim();
+      if (!part || part === '>' || part === ' ') continue;
+      
+      // Determine combinator (default to space for last element)
+      let combinator: '>' | ' ' = ' ';
+      if (i > 0 && parts[i - 1].includes('>')) {
+        combinator = '>';
+      }
+      
+      // Extract position info from selector
+      let positionType: 'all' | 'even' | 'odd' | 'position' = 'all';
+      let positionValue: number | undefined;
+      let cleanSelector = part;
+      
+      // Check for :nth-of-type or :nth-child
+      const nthMatch = part.match(/:nth-of-type\((\d+)\)|:nth-child\((\d+)\)/);
+      if (nthMatch) {
+        positionType = 'position';
+        positionValue = parseInt(nthMatch[1] || nthMatch[2]);
+        cleanSelector = part.replace(/:nth-of-type\(\d+\)|:nth-child\(\d+\)/, '');
+      } else if (part.includes(':even')) {
+        positionType = 'even';
+        cleanSelector = part.replace(':even', '');
+      } else if (part.includes(':odd')) {
+        positionType = 'odd';
+        cleanSelector = part.replace(':odd', '');
+      }
+      
+      // Count siblings if we have the element
+      let siblingCount = 0;
+      if (currentElement && currentElement.parentElement) {
+        const tagName = cleanSelector.split(/[.#:]/)[0];
+        const siblings = Array.from(currentElement.parentElement.children);
+        siblingCount = siblings.filter(el => el.tagName.toLowerCase() === tagName).length;
+      }
+      
+      this.selectorParts.unshift({
+        selector: cleanSelector,
+        combinator: combinator,
+        positionType: positionType,
+        positionValue: positionValue,
+        siblingCount: siblingCount
+      });
+      
+      // Move up the tree
+      if (currentElement) {
+        currentElement = currentElement.parentElement as Element;
+      }
+    }
+  }
+
+  /**
+   * Task 4: Toggle selector configuration panel
+   */
+  private toggleSelectorConfig(): void {
+    this.selectorConfigExpanded = !this.selectorConfigExpanded;
+    const configPanel = this.panel?.querySelector('.selector-config-panel') as HTMLElement;
+    
+    if (configPanel) {
+      if (this.selectorConfigExpanded) {
+        configPanel.style.display = 'block';
+        this.renderSelectorConfig();
+      } else {
+        configPanel.style.display = 'none';
+      }
+    }
+  }
+
+  /**
+   * Task 4: Render selector configuration UI
+   */
+  private renderSelectorConfig(): void {
+    const configPanel = this.panel?.querySelector('.selector-config-panel') as HTMLElement;
+    if (!configPanel) return;
+    
+    let html = '<div class="selector-config-content">';
+    
+    this.selectorParts.forEach((part, index) => {
+      const partId = `selector-part-${index}`;
+      
+      // Create position options
+      const positionOptions = ['all', 'even', 'odd'];
+      if (part.siblingCount) {
+        for (let i = 1; i <= part.siblingCount; i++) {
+          positionOptions.push(`position-${i}`);
+        }
+      }
+      
+      html += `
+        <div class="selector-part-container">
+          <div class="selector-part" data-index="${index}">
+            <div class="selector-part-label">${part.selector}</div>
+            <select class="selector-position-type" data-index="${index}">
+              ${positionOptions.map(opt => {
+                const isSelected = (opt === 'all' && part.positionType === 'all') ||
+                                   (opt === 'even' && part.positionType === 'even') ||
+                                   (opt === 'odd' && part.positionType === 'odd') ||
+                                   (opt.startsWith('position-') && part.positionType === 'position' && 
+                                    parseInt(opt.replace('position-', '')) === part.positionValue);
+                
+                const label = opt === 'all' ? t('ui.selectorConfig.all') :
+                              opt === 'even' ? t('ui.selectorConfig.even') :
+                              opt === 'odd' ? t('ui.selectorConfig.odd') :
+                              t('ui.selectorConfig.onlyPosition', { n: opt.replace('position-', '') });
+                
+                return `<option value="${opt}" ${isSelected ? 'selected' : ''}>${label}</option>`;
+              }).join('')}
+            </select>
+          </div>
+      `;
+      
+      // Add combinator control between parts (except for the last one)
+      if (index < this.selectorParts.length - 1) {
+        html += `
+          <div class="selector-combinator">
+            <div class="combinator-line"></div>
+            <select class="selector-combinator-type" data-index="${index}">
+              <option value=">" ${part.combinator === '>' ? 'selected' : ''}>${t('ui.selectorConfig.children')}</option>
+              <option value=" " ${part.combinator === ' ' ? 'selected' : ''}>${t('ui.selectorConfig.descendants')}</option>
+            </select>
+          </div>
+        `;
+      }
+      
+      html += '</div>';
+    });
+    
+    html += '</div>';
+    configPanel.innerHTML = html;
+    
+    // Attach event listeners
+    this.attachSelectorConfigListeners();
+  }
+
+  /**
+   * Task 4: Attach event listeners to selector config controls
+   */
+  private attachSelectorConfigListeners(): void {
+    const configPanel = this.panel?.querySelector('.selector-config-panel');
+    if (!configPanel) return;
+    
+    // Position type selects
+    const positionSelects = configPanel.querySelectorAll('.selector-position-type');
+    positionSelects.forEach(select => {
+      select.addEventListener('change', (e) => {
+        const target = e.target as HTMLSelectElement;
+        const index = parseInt(target.dataset.index || '0');
+        this.updateSelectorPartPosition(index, target.value);
+      });
+    });
+    
+    // Combinator selects
+    const combinatorSelects = configPanel.querySelectorAll('.selector-combinator-type');
+    combinatorSelects.forEach(select => {
+      select.addEventListener('change', (e) => {
+        const target = e.target as HTMLSelectElement;
+        const index = parseInt(target.dataset.index || '0');
+        this.updateSelectorPartCombinator(index, target.value as '>' | ' ');
+      });
+    });
+  }
+
+  /**
+   * Task 4: Update selector part position
+   */
+  private updateSelectorPartPosition(index: number, value: string): void {
+    const part = this.selectorParts[index];
+    if (!part) return;
+    
+    if (value === 'all') {
+      part.positionType = 'all';
+      part.positionValue = undefined;
+    } else if (value === 'even') {
+      part.positionType = 'even';
+      part.positionValue = undefined;
+    } else if (value === 'odd') {
+      part.positionType = 'odd';
+      part.positionValue = undefined;
+    } else if (value.startsWith('position-')) {
+      part.positionType = 'position';
+      part.positionValue = parseInt(value.replace('position-', ''));
+    }
+    
+    this.rebuildSelector();
+  }
+
+  /**
+   * Task 4: Update selector part combinator
+   */
+  private updateSelectorPartCombinator(index: number, value: '>' | ' '): void {
+    const part = this.selectorParts[index];
+    if (!part) return;
+    
+    part.combinator = value;
+    this.rebuildSelector();
+  }
+
+  /**
+   * Task 4: Rebuild selector from parts
+   */
+  private rebuildSelector(): void {
+    let selector = '';
+    
+    this.selectorParts.forEach((part, index) => {
+      // Add the selector part
+      selector += part.selector;
+      
+      // Add position specifier
+      if (part.positionType === 'position' && part.positionValue) {
+        selector += `:nth-of-type(${part.positionValue})`;
+      } else if (part.positionType === 'even') {
+        selector += ':nth-of-type(even)';
+      } else if (part.positionType === 'odd') {
+        selector += ':nth-of-type(odd)';
+      }
+      
+      // Add combinator (except for last part)
+      if (index < this.selectorParts.length - 1) {
+        selector += part.combinator === '>' ? ' > ' : ' ';
+      }
+    });
+    
+    this.currentSelector = selector;
+    
+    // Update the selector input
+    const selectorInput = this.panel?.querySelector('.selector-input') as HTMLInputElement;
+    if (selectorInput) {
+      selectorInput.value = selector;
+    }
+    
+    // Update selector count
+    this.updateSelectorCount();
+    
+    // Update all element changes with new selector
+    if (this.currentElement) {
+      const oldChanges = this.allElementChanges.get(this.currentSelector);
+      if (oldChanges) {
+        // Remove old entry
+        this.allElementChanges.delete(this.currentSelector);
+        // Add with new selector
+        this.allElementChanges.set(selector, oldChanges);
+      }
+    }
+    
+    // Apply styles with new selector
+    this.applyStyles();
+  }
+
+  /**
+   * Task 4: Update selector count display
+   */
+  private updateSelectorCount(): void {
+    const selectorCount = this.panel?.querySelector('.selector-count') as HTMLElement | null;
+    if (selectorCount) {
+      try {
+        const matches = document.querySelectorAll(this.currentSelector);
+        const count = matches.length;
+        
+        if (count > 0) {
+          selectorCount.textContent = t('ui.panel.selectorMatchCount', { count: count.toString() });
+          selectorCount.style.display = 'block';
+        } else {
+          selectorCount.textContent = '';
+          selectorCount.style.display = 'none';
+        }
+      } catch (e) {
+        selectorCount.textContent = this.currentSelector ? t('ui.panel.selectorInvalid') : '';
+        selectorCount.style.display = this.currentSelector ? 'block' : 'none';
+      }
+    }
   }
 
   /**

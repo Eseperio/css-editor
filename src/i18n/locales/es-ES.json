@@ -21,6 +21,15 @@
       "anchorBottom": "Abajo",
       "language": "Idioma"
     },
+    "selectorConfig": {
+      "children": "Hijos",
+      "descendants": "Todos los descendientes",
+      "all": "Todos",
+      "even": "Pares",
+      "odd": "Impares",
+      "position": "Posición {n}",
+      "onlyPosition": "Solo posición {n}"
+    },
     "propertySelector": {
       "title": "Seleccionar propiedad para añadir",
       "search": "Buscar propiedades...",

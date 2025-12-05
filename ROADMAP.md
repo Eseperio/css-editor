@@ -3,7 +3,7 @@
   here to enter style editor", then, legend changes to "Click any element to edit its styles"
 - [x] Keep all css changes. All changes made to different elements should be kept in memory, so when user customizes a
   second element, the first one keeps its changes. And css generated includes all changes made to all elements.
-- [ ] Improve the selector configuration. Now the selector is calculated automatically, but it may be too specific or
+- [x] Improve the selector configuration. Now the selector is calculated automatically, but it may be too specific or
   too generic. Right to selector input label there must be a cog. Once pressed, a panel appears below the input with a
   list of containers, each one with a piece of the selector, and in between, a vertical line joining them in the middle,
   like a diagram. At the right side of that line there is a compact dropdown with options: "children" or "all

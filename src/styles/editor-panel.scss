@@ -871,12 +871,120 @@ $panel-height-horizontal: 300px;
     flex-direction: column;
     gap: 8px;
 
+    .selector-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      label {
+        flex: 1;
+      }
+
+      .selector-config-toggle {
+        background: var(--editor-bg-muted);
+        border: 1px solid var(--editor-border);
+        border-radius: var(--editor-radius-xs);
+        padding: 4px 8px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.2s ease;
+
+        &:hover {
+          background: var(--editor-accent-light);
+          border-color: var(--editor-accent);
+          color: var(--editor-accent);
+        }
+      }
+    }
+
     .selector-input {
       flex: 0 0 auto;
     }
 
     .selector-count {
       flex: 0 0 auto;
+    }
+
+    .selector-config-panel {
+      background: var(--editor-bg-elevated);
+      border: 1px solid var(--editor-border);
+      border-radius: var(--editor-radius-sm);
+      padding: 12px;
+      margin-top: 8px;
+
+      .selector-config-content {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .selector-part-container {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .selector-part {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px;
+        background: var(--editor-bg-muted);
+        border-radius: var(--editor-radius-xs);
+
+        .selector-part-label {
+          flex: 1;
+          font-family: 'Courier New', monospace;
+          font-size: 13px;
+          color: var(--editor-accent);
+        }
+
+        .selector-position-type {
+          min-width: 120px;
+          padding: 4px 8px;
+          border: 1px solid var(--editor-border);
+          border-radius: var(--editor-radius-xs);
+          background: var(--editor-input-bg);
+          color: var(--editor-text);
+          font-size: 12px;
+          cursor: pointer;
+
+          &:focus {
+            outline: none;
+            border-color: var(--editor-accent);
+          }
+        }
+      }
+
+      .selector-combinator {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 8px;
+        position: relative;
+
+        .combinator-line {
+          width: 2px;
+          height: 16px;
+          background: var(--editor-border-strong);
+          margin-left: 8px;
+        }
+
+        .selector-combinator-type {
+          padding: 4px 8px;
+          border: 1px solid var(--editor-border);
+          border-radius: var(--editor-radius-xs);
+          background: var(--editor-input-bg);
+          color: var(--editor-text);
+          font-size: 12px;
+          cursor: pointer;
+
+          &:focus {
+            outline: none;
+            border-color: var(--editor-accent);
+          }
+        }
+      }
     }
   }
 }
