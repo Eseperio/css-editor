@@ -1492,23 +1492,28 @@ export class CSSEditorPanel {
       let cleanSelector = part;
       
       // Check for :nth-of-type or :nth-child
-      const nthMatch = part.match(/:nth-of-type\((\d+)\)|:nth-child\((\d+)\)/);
+      const nthMatch = part.match(/:nth-of-type\((\d+)\)|:nth-of-type\(even\)|:nth-of-type\(odd\)|:nth-child\((\d+)\)/);
       if (nthMatch) {
-        positionType = 'position';
-        positionValue = parseInt(nthMatch[1] || nthMatch[2]);
-        cleanSelector = part.replace(/:nth-of-type\(\d+\)|:nth-child\(\d+\)/, '');
-      } else if (part.includes(':even')) {
-        positionType = 'even';
-        cleanSelector = part.replace(':even', '');
-      } else if (part.includes(':odd')) {
-        positionType = 'odd';
-        cleanSelector = part.replace(':odd', '');
+        if (nthMatch[0].includes('even')) {
+          positionType = 'even';
+        } else if (nthMatch[0].includes('odd')) {
+          positionType = 'odd';
+        } else {
+          positionType = 'position';
+          positionValue = parseInt(nthMatch[1] || nthMatch[2]);
+        }
+        cleanSelector = part.replace(/:nth-of-type\((\d+|even|odd)\)|:nth-child\(\d+\)/, '');
       }
       
       // Count siblings if we have the element
       let siblingCount = 0;
       if (currentElement && currentElement.parentElement) {
-        const tagName = cleanSelector.split(/[.#:]/)[0];
+        // Extract tag name, handling selectors that start with class or ID
+        let tagName = cleanSelector.split(/[.#:]/)[0];
+        if (!tagName) {
+          // If selector starts with . or #, use the element's tag name
+          tagName = currentElement.tagName.toLowerCase();
+        }
         const siblings = Array.from(currentElement.parentElement.children);
         siblingCount = siblings.filter(el => el.tagName.toLowerCase() === tagName).length;
       }
@@ -1678,6 +1683,9 @@ export class CSSEditorPanel {
    * Task 4: Rebuild selector from parts
    */
   private rebuildSelector(): void {
+    // Store old selector before updating
+    const oldSelector = this.currentSelector;
+    
     let selector = '';
     
     this.selectorParts.forEach((part, index) => {
@@ -1711,11 +1719,11 @@ export class CSSEditorPanel {
     this.updateSelectorCount();
     
     // Update all element changes with new selector
-    if (this.currentElement) {
-      const oldChanges = this.allElementChanges.get(this.currentSelector);
+    if (this.currentElement && oldSelector !== selector) {
+      const oldChanges = this.allElementChanges.get(oldSelector);
       if (oldChanges) {
         // Remove old entry
-        this.allElementChanges.delete(this.currentSelector);
+        this.allElementChanges.delete(oldSelector);
         // Add with new selector
         this.allElementChanges.set(selector, oldChanges);
       }
