@@ -32,6 +32,8 @@ export type FilterType = 'none' | 'blur' | 'grayscale' | 'sepia' | 'brightness' 
 
 /**
  * Get filter options with translated labels
+ * Note: Creates new array on each call with current translations.
+ * This is acceptable as it's only called when rendering filter inputs.
  */
 export function getFilterOptions(): FilterOption[] {
   return [
