@@ -1403,12 +1403,14 @@ export class CSSEditorPanel {
 
   /**
    * Clear all changes
+   * Task 3: Also clear all element changes stored in memory
    */
   private clearChanges(): void {
     if (confirm(t('ui.messages.confirmClear'))) {
       this.currentStyles.clear();
       this.modifiedProperties.clear();
       this.advancedProperties.clear();
+      this.allElementChanges.clear(); // Clear all stored element changes
       this.styleElement.textContent = '';
       
       // Re-render the properties
@@ -1427,6 +1429,7 @@ export class CSSEditorPanel {
 
   /**
    * Destroy the panel
+   * Task 3: Clean up all element changes to prevent memory leaks
    */
   public destroy(): void {
     if (this.panel) {
@@ -1436,5 +1439,7 @@ export class CSSEditorPanel {
     if (this.styleElement) {
       this.styleElement.remove();
     }
+    // Clear all stored element changes to prevent memory leaks
+    this.allElementChanges.clear();
   }
 }
