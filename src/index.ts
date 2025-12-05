@@ -9,8 +9,10 @@ export class CSSEditor {
   private picker: ElementPicker;
   private panel: CSSEditorPanel; 
   private activateButton: HTMLElement | null = null;
+  private options: CSSEditorOptions; // Store options for reference
 
   constructor(options: CSSEditorOptions = {}) {
+    this.options = options;
     this.picker = new ElementPicker();
     this.panel = new CSSEditorPanel(options);
   }
@@ -59,61 +61,86 @@ export class CSSEditor {
   }
 
   /**
-   * Create a floating activate button
+   * Create a floating activate button or use custom element
+   * Task 1: Support custom activator element via CSS selector
+   * Task 2: Use fixed top bar instead of floating button
    */
   private createActivateButton(): void {
-    this.activateButton = document.createElement('button');
+    // Task 1: If custom activator selector is provided, use that element
+    if (this.options.activatorSelector) {
+      const customElement = document.querySelector(this.options.activatorSelector);
+      if (customElement) {
+        this.activateButton = customElement as HTMLElement;
+        this.attachActivatorListeners();
+        return;
+      } else {
+        console.warn(`Custom activator element not found: ${this.options.activatorSelector}`);
+        // Fall through to create default activator
+      }
+    }
+    
+    // Task 2: Create fixed top bar instead of floating button
+    this.activateButton = document.createElement('div');
     this.activateButton.id = 'css-editor-activate';
-    this.activateButton.innerHTML = '🎨';
+    this.activateButton.textContent = 'Press here to enter style editor';
     this.activateButton.title = 'Activate CSS Editor';
     
     const style = document.createElement('style');
     style.textContent = `
       #css-editor-activate {
         position: fixed;
-        bottom: 20px;
-        right: 20px;
-        width: 60px;
-        height: 60px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
+        top: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        background: rgba(0, 0, 0, 0.85);
         color: white;
-        font-size: 28px;
+        padding: 10px 20px;
+        font-size: 14px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
         cursor: pointer;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
         z-index: 9998;
         transition: all 0.3s ease;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        text-align: center;
+        user-select: none;
       }
       #css-editor-activate:hover {
-        transform: scale(1.1);
-        box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+        background: rgba(0, 0, 0, 0.95);
       }
       #css-editor-activate.active {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-        animation: pulse 1.5s ease-in-out infinite;
-      }
-      @keyframes pulse {
-        0%, 100% { transform: scale(1); }
-        50% { transform: scale(1.05); }
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       }
     `;
     document.head.appendChild(style);
 
+    document.body.appendChild(this.activateButton);
+    this.attachActivatorListeners();
+  }
+
+  /**
+   * Attach click listeners to the activator element
+   */
+  private attachActivatorListeners(): void {
+    if (!this.activateButton) return;
+    
     this.activateButton.addEventListener('click', () => {
       if (this.picker.isPickerActive()) {
         this.stopPicking();
         this.activateButton?.classList.remove('active');
+        // Task 2: Reset text when deactivating
+        if (!this.options.activatorSelector) {
+          this.activateButton!.textContent = 'Press here to enter style editor';
+        }
       } else {
         this.startPicking();
         this.activateButton?.classList.add('active');
+        // Task 2: Update text when activating
+        if (!this.options.activatorSelector) {
+          this.activateButton!.textContent = 'Click any element to edit its styles';
+        }
       }
     });
-
-    document.body.appendChild(this.activateButton);
   }
 
   /**
@@ -123,7 +150,8 @@ export class CSSEditor {
     this.picker.stop();
     this.panel.destroy();
     
-    if (this.activateButton) {
+    // Only remove if we created it (not custom activator)
+    if (this.activateButton && !this.options.activatorSelector) {
       this.activateButton.remove();
       this.activateButton = null;
     }

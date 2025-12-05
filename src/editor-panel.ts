@@ -26,6 +26,7 @@ export interface CSSEditorOptions {
   stylesUrl?: string;
   fontFamilies?: string[];
   locale?: Locale;
+  activatorSelector?: string; // Task 1: Allow custom activator element selector
 }
 
 /**
@@ -45,6 +46,8 @@ export class CSSEditorPanel {
   private options: CSSEditorOptions;
   private styleElement: HTMLStyleElement;
   private theme: 'light' | 'dark' = 'light'; // Theme state
+  // Task 3: Store all element changes across different elements
+  private allElementChanges: Map<string, { styles: Map<string, string>, modifiedProperties: Set<string> }> = new Map();
 
   constructor(options: CSSEditorOptions = {}) {
     this.options = options;
@@ -67,9 +70,32 @@ export class CSSEditorPanel {
    * Show the editor panel for a specific element
    */
   public show(selector: string, element: Element): void {
+    // Task 3: Save current element changes before switching to a new element
+    if (this.currentSelector && this.modifiedProperties.size > 0) {
+      this.allElementChanges.set(this.currentSelector, {
+        styles: new Map(this.currentStyles),
+        modifiedProperties: new Set(this.modifiedProperties)
+      });
+    }
+    
     this.currentSelector = selector;
     this.loadCurrentStyles(element);
-    this.modifiedProperties.clear(); // Reset modified properties for new element
+    
+    // Task 3: Load previous changes for this element if they exist
+    const previousChanges = this.allElementChanges.get(selector);
+    if (previousChanges) {
+      this.modifiedProperties = new Set(previousChanges.modifiedProperties);
+      // Merge previous modified styles with current computed styles
+      previousChanges.modifiedProperties.forEach(prop => {
+        const value = previousChanges.styles.get(prop);
+        if (value) {
+          this.currentStyles.set(prop, value);
+        }
+      });
+    } else {
+      this.modifiedProperties.clear(); // Reset modified properties for new element
+    }
+    
     this.advancedProperties.clear(); // Reset advanced properties for new element
     
     if (!this.panel) {
@@ -1187,21 +1213,39 @@ export class CSSEditorPanel {
 
   /**
    * Generate CSS from current styles (only modified properties)
+   * Task 3: Include all element changes, not just the current element
    */
   private generateCSS(): string {
-    if (this.modifiedProperties.size === 0) {
+    // Save current element changes
+    if (this.currentSelector && this.modifiedProperties.size > 0) {
+      this.allElementChanges.set(this.currentSelector, {
+        styles: new Map(this.currentStyles),
+        modifiedProperties: new Set(this.modifiedProperties)
+      });
+    }
+    
+    // Generate CSS for all elements with changes
+    if (this.allElementChanges.size === 0) {
       return '';
     }
-
-    const properties = Array.from(this.modifiedProperties)
-      .map(prop => {
-        const value = this.currentStyles.get(prop);
-        return value ? `  ${prop}: ${value};` : null;
-      })
-      .filter(line => line !== null)
-      .join('\n');
-
-    return properties ? `${this.currentSelector} {\n${properties}\n}` : '';
+    
+    const cssBlocks: string[] = [];
+    
+    this.allElementChanges.forEach((elementData, selector) => {
+      const properties = Array.from(elementData.modifiedProperties)
+        .map(prop => {
+          const value = elementData.styles.get(prop);
+          return value ? `  ${prop}: ${value};` : null;
+        })
+        .filter(line => line !== null)
+        .join('\n');
+      
+      if (properties) {
+        cssBlocks.push(`${selector} {\n${properties}\n}`);
+      }
+    });
+    
+    return cssBlocks.join('\n\n');
   }
 
   /**
