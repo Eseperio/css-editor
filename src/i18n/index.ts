@@ -9,6 +9,7 @@ import esESTranslations from './locales/es-ES.json';
 export type Locale = 'en' | 'es-ES';
 
 export interface Translations {
+  localeName: string;
   ui: {
     panel: {
       title: string;
@@ -28,6 +29,7 @@ export interface Translations {
       anchorLeft: string;
       anchorTop: string;
       anchorBottom: string;
+      language: string;
     };
     propertySelector: {
       title: string;
@@ -87,6 +89,44 @@ const translations: Record<Locale, Translations> = {
  * Current active locale
  */
 let currentLocale: Locale = 'en';
+
+/**
+ * Detect browser locale and return a supported locale
+ * Falls back to 'en' if browser locale is not supported
+ */
+export function detectBrowserLocale(): Locale {
+  if (typeof navigator === 'undefined') {
+    return 'en';
+  }
+
+  // Get browser language preference
+  const browserLang = navigator.language || (navigator as any).userLanguage;
+  
+  if (!browserLang) {
+    return 'en';
+  }
+
+  // Check for exact match first (e.g., 'es-ES')
+  if (browserLang in translations) {
+    return browserLang as Locale;
+  }
+
+  // Check for language without region (e.g., 'es' should match 'es-ES')
+  const langCode = browserLang.split('-')[0].toLowerCase();
+  
+  // Map language codes to supported locales
+  const languageMap: Record<string, Locale> = {
+    'es': 'es-ES',
+    'en': 'en'
+  };
+
+  return languageMap[langCode] || 'en';
+}
+
+/**
+ * Initialize locale (call this on module load to auto-detect)
+ */
+currentLocale = detectBrowserLocale();
 
 /**
  * Set the current locale
@@ -168,4 +208,12 @@ export function translatePropertyGroup(groupName: string): string {
  */
 export function getAvailableLocales(): Locale[] {
   return Object.keys(translations) as Locale[];
+}
+
+/**
+ * Get the display name for a locale
+ */
+export function getLocaleName(locale: Locale): string {
+  const trans = translations[locale];
+  return trans?.localeName || locale;
 }

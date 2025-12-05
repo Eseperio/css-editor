@@ -11,7 +11,7 @@ import {
   getFilterOption,
   formatFilterValue
 } from './property-inputs';
-import { setLocale, t, translateProperty, translatePropertyGroup, Locale } from './i18n';
+import { setLocale, t, translateProperty, translatePropertyGroup, Locale, getLocale, getAvailableLocales, getLocaleName } from './i18n';
 import './styles/editor-panel.scss';
 
 /**
@@ -112,10 +112,21 @@ export class CSSEditorPanel {
     this.panel = document.createElement('div');
     this.panel.id = 'css-editor-panel';
     this.panel.classList.add(`anchor-${this.anchorPosition}`);
+    
+    // Build locale selector options
+    const availableLocales = getAvailableLocales();
+    const currentLocale = getLocale();
+    const localeOptions = availableLocales.map(locale => 
+      `<option value="${locale}" ${locale === currentLocale ? 'selected' : ''}>${getLocaleName(locale)}</option>`
+    ).join('');
+    
     this.panel.innerHTML = `
       <div class="css-editor-header">
         <h3>${t('ui.panel.title')}</h3>
         <div class="header-actions">
+          <select class="locale-select" title="${t('ui.panel.language')}">
+            ${localeOptions}
+          </select>
           <select class="anchor-select" title="${t('ui.panel.anchorPosition')}">
             <option value="right">${t('ui.panel.anchorRight')}</option>
             <option value="bottom">${t('ui.panel.anchorBottom')}</option>
@@ -205,6 +216,15 @@ export class CSSEditorPanel {
     // Close button
     const closeBtn = this.panel.querySelector('.css-editor-close');
     closeBtn?.addEventListener('click', () => this.hide());
+
+    // Locale selector
+    const localeSelect = this.panel.querySelector('.locale-select') as HTMLSelectElement | null;
+    if (localeSelect) {
+      localeSelect.addEventListener('change', () => {
+        const newLocale = localeSelect.value as Locale;
+        this.changeLocale(newLocale);
+      });
+    }
 
     // Anchor selector
     const anchorSelect = this.panel.querySelector('.anchor-select') as HTMLSelectElement | null;
@@ -296,6 +316,27 @@ export class CSSEditorPanel {
     if (anchorSelect) {
       anchorSelect.value = this.anchorPosition;
     }
+  }
+
+  /**
+   * Change the locale and refresh the panel
+   */
+  private changeLocale(locale: Locale): void {
+    setLocale(locale);
+    
+    // Remove the current panel
+    if (this.panel) {
+      this.panel.remove();
+      this.panel = null;
+    }
+    
+    // Recreate the panel with new translations
+    this.createPanel();
+    
+    // Restore the panel state
+    this.updatePanel();
+    this.panel!.style.display = 'block';
+    this.applyAnchorPosition();
   }
 
   /**

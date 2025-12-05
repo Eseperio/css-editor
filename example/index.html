@@ -274,10 +274,12 @@
   <!-- Load the CSS Editor library -->
   <script src="../dist/css-editor.js"></script>
   <script>
-    // Initialize the CSS Editor with Spanish locale
+    // Initialize the CSS Editor
+    // If no locale is specified, it will auto-detect from browser settings
     const editor = new CSSEditor.CSSEditor({
-      // Set locale to Spanish (es-ES) or English (en)
-      locale: 'es-ES',  // Change to 'en' for English
+      // Optional: Explicitly set locale (uncomment to override browser detection)
+      // locale: 'es-ES',  // Spanish
+      // locale: 'en',     // English
       
       // Optional: Configure save endpoint
       // saveEndpoint: '/api/save-css',
@@ -305,8 +307,9 @@
     // You can also programmatically show the editor for a specific element
     // editor.showEditor('.demo-box');
     
-    // You can change locale at runtime
-    // CSSEditor.setLocale('en');  // Switch to English
+    // You can change locale at runtime using the dropdown in the editor panel
+    // Or programmatically:
+    // CSSEditor.setLocale('en');     // Switch to English
     // CSSEditor.setLocale('es-ES');  // Switch to Spanish
   </script>
 </body>

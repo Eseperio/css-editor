@@ -1,4 +1,5 @@
 {
+  "localeName": "Español",
   "ui": {
     "panel": {
       "title": "Editor CSS",
@@ -17,7 +18,8 @@
       "anchorRight": "Derecha",
       "anchorLeft": "Izquierda",
       "anchorTop": "Arriba",
-      "anchorBottom": "Abajo"
+      "anchorBottom": "Abajo",
+      "language": "Idioma"
     },
     "propertySelector": {
       "title": "Seleccionar propiedad para añadir",

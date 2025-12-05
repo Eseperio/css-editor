@@ -135,4 +135,4 @@ export { ElementPicker } from './element-picker';
 export { CSSEditorPanel, CSSEditorOptions } from './editor-panel';
 export { generateUniqueSelector } from './selector-generator';
 export { CSS_PROPERTIES, COMMON_PROPERTIES, getPropertyValues, getAdvancedProperties } from './css-properties';
-export { setLocale, getLocale, getAvailableLocales, Locale } from './i18n';
+export { setLocale, getLocale, getAvailableLocales, getLocaleName, detectBrowserLocale, Locale } from './i18n';
