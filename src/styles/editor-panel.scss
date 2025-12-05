@@ -45,6 +45,7 @@ $panel-height-horizontal: 300px;
   // Radius
   --editor-radius: 0.5rem;
   --editor-radius-sm: 0.375rem;
+  --editor-radius-xs: 0.25rem;
 }
 
 // Dark mode
@@ -554,7 +555,7 @@ $panel-height-horizontal: 300px;
 
       &::-webkit-color-swatch {
         border: none;
-        border-radius: calc(var(--editor-radius-sm) - 2px);
+        border-radius: var(--editor-radius-xs);
       }
     }
 
