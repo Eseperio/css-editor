@@ -14,3 +14,14 @@
   input, and therefore the css rules generated.
 - [ ] When user hovers the selector input, highlight the element(s) matching that selector in the page with the blue
   overlay.
+- [ ] Margin items overflow because they are in a subpanel. Fix it.
+- [ ] Allow to customize the action buttons in pannel, enabling or disabling them, also the css generated panel
+- [ ] Add some kind of subpanel for each advanced rule.
+- [ ] Ensure that the options already available in groups are not repeated in advanced panel.
+- [ ] The border properties can be defined independently for each side, so we need to do something like with padding
+  and margin, to allow user to define different values for each side.
+- [ ] There are still many properties in advanced panel that can be added to main groups. Review them and add the most
+  useful ones.
+- [ ] There are a set of properties that are dependant on others, like align-items that only makes sense if display is
+  flex or grid. We should hide or disable those properties when they don't make sense. Also those properties must be in
+  same panel. So whenever a user changes display to flex, the flex properties appear in the same panel.
