@@ -21,7 +21,9 @@ export interface CSSEditorOptions {
   saveEndpoint?: string;
   onSave?: (css: string) => void;
   onLoad?: () => Promise<string>;
+  onChange?: (css: string) => void;
   stylesUrl?: string;
+  fontFamilies?: string[];
 }
 
 /**
@@ -371,12 +373,23 @@ export class CSSEditorPanel {
   }
 
   /**
+   * Suggestions for dropdowns, allowing custom font list
+   */
+  private getPropertySuggestions(prop: string): string[] {
+    const base = getPropertyValues(prop);
+    if (prop === 'font-family' && this.options.fontFamilies && this.options.fontFamilies.length > 0) {
+      return Array.from(new Set([...base, ...this.options.fontFamilies]));
+    }
+    return base;
+  }
+
+  /**
    * Render a single property input
    */
   private renderPropertyInput(prop: string, isSpacingSide: boolean): string {
     const currentValue = this.currentStyles.get(prop) || '';
     const isModified = this.modifiedProperties.has(prop);
-    const suggestions = getPropertyValues(prop);
+    const suggestions = this.getPropertySuggestions(prop);
     const inputType = getPropertyInputType(prop);
     const trimmedValue = currentValue.trim();
     const hasSuggestion = suggestions.includes(trimmedValue);
@@ -1076,6 +1089,7 @@ export class CSSEditorPanel {
   private applyStyles(): void {
     const css = this.generateCSS();
     this.styleElement.textContent = css;
+    this.emitChange(css);
   }
 
   /**
@@ -1105,6 +1119,15 @@ export class CSSEditorPanel {
     if (preview) {
       const css = this.generateCSS();
       preview.textContent = css || '/* No styles applied yet */';
+    }
+  }
+
+  /**
+   * Emit onChange callback if provided
+   */
+  private emitChange(css: string): void {
+    if (this.options.onChange) {
+      this.options.onChange(css);
     }
   }
 

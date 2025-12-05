@@ -114,6 +114,8 @@ constructor(options?: CSSEditorOptions)
 | `loadEndpoint` | `string` | URL endpoint for loading CSS (GET request) |
 | `onSave` | `(css: string) => void` | Callback function when save button is clicked |
 | `onLoad` | `() => Promise<string>` | Callback function to load previously saved CSS |
+| `onChange` | `(css: string) => void` | Callback fired on every CSS change (live typing) |
+| `fontFamilies` | `string[]` | Optional list of font-family suggestions for the Typography panel |
 
 #### Methods
 

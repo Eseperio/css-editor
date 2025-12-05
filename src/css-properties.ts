@@ -54,8 +54,10 @@ export const PROPERTY_GROUPS: PropertyGroup[] = [
     name: 'Typography',
     properties: [
       'color',
+      'font-family',
       'font-size',
       'font-weight',
+      'font-style',
       'text-align'
     ]
   },
@@ -175,6 +177,7 @@ export function getPropertyValues(property: string): string[] {
     'text-align': ['left', 'center', 'right', 'justify'],
     'font-weight': ['normal', 'bold', '100', '200', '300', '400', '500', '600', '700', '800', '900'],
     'font-style': ['normal', 'italic', 'oblique'],
+    'font-family': ['Arial, sans-serif', 'Helvetica, sans-serif', 'Times New Roman, serif', 'Georgia, serif', 'Courier New, monospace', 'Monaco, monospace', 'system-ui, sans-serif'],
     'text-decoration': ['none', 'underline', 'overline', 'line-through'],
     'text-transform': ['none', 'capitalize', 'uppercase', 'lowercase'],
     'overflow': ['visible', 'hidden', 'scroll', 'auto'],
