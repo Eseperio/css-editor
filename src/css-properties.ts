@@ -82,7 +82,8 @@ export const PROPERTY_GROUPS: PropertyGroup[] = [
   {
     name: 'Effects',
     properties: [
-      'opacity'
+      'opacity',
+      'filter'
     ]
   }
 ];

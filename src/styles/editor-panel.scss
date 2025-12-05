@@ -19,7 +19,7 @@ $panel-contrast: #1f2a36;
   color: $panel-text;
   box-shadow: -2px 0 10px rgba(0, 0, 0, 0.3);
   z-index: 10000;
-  overflow: hidden;
+  overflow: auto;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   display: none;
   transition: width 0.2s ease, height 0.2s ease, transform 0.2s ease;
@@ -54,7 +54,7 @@ $panel-contrast: #1f2a36;
 
     .css-editor-content {
       flex: 1 1 auto;
-      overflow: hidden;
+      overflow: auto;
     }
 
     .css-editor-footer {
@@ -96,8 +96,7 @@ $panel-contrast: #1f2a36;
       gap: 8px;
     }
 
-    .css-editor-close,
-    .anchor-toggle {
+    .css-editor-close {
       background: none;
       border: 1px solid #4b6072;
       color: $panel-text;
@@ -116,8 +115,21 @@ $panel-contrast: #1f2a36;
       }
     }
 
-    .anchor-toggle {
-      font-size: 14px;
+    .anchor-select {
+      background: $panel-bg;
+      border: 1px solid #4b6072;
+      color: $panel-text;
+      font-size: 13px;
+      padding: 6px 8px;
+      height: 32px;
+      border-radius: 6px;
+      cursor: pointer;
+      min-width: 120px;
+
+      &:focus {
+        outline: none;
+        border-color: $panel-accent;
+      }
     }
   }
 
@@ -154,7 +166,7 @@ $panel-contrast: #1f2a36;
   .css-editor-content {
     padding: 16px 20px 20px;
     min-height: 300px;
-    overflow: hidden;
+    overflow-y: auto;
     flex: 1 1 auto;
     min-height: 0;
 
@@ -164,7 +176,7 @@ $panel-contrast: #1f2a36;
       gap: 20px;
       height: 100%;
       min-height: 0;
-      overflow: hidden;
+      overflow: visible;
 
       > * {
         min-height: 0;
@@ -175,16 +187,14 @@ $panel-contrast: #1f2a36;
     .common-properties-section,
     .advanced-properties-section {
       margin: 0;
-      h4 {
-        margin: 0 0 15px;
-        font-size: 14px;
-        color: $panel-subtle;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-      }
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
       .common-properties,
       .advanced-properties {
         overflow-y: auto;
+        flex: 1 1 auto;
+        min-height: 0;
       }
     }
 
@@ -595,6 +605,33 @@ $panel-contrast: #1f2a36;
       -webkit-appearance: none;
       margin: 0;
     }
+
+    .filter-input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+
+      .filter-controls {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .filter-numeric {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+
+        .filter-number-input {
+          width: 80px;
+        }
+      }
+
+      .filter-custom-input {
+        width: 100%;
+      }
+    }
   }
 
   .css-editor-footer {
@@ -643,6 +680,8 @@ $panel-contrast: #1f2a36;
     padding: 16px 20px 20px;
     background: $panel-bg-strong;
     border-top: 2px solid $panel-border;
+    border-bottom: 1px solid $panel-border;
+    margin-bottom: 12px;
 
     h4 {
       margin: 0 0 10px;
@@ -668,15 +707,20 @@ $panel-contrast: #1f2a36;
 #css-editor-panel.anchor-top .css-editor-content .properties-grid,
 #css-editor-panel.anchor-bottom .css-editor-content .properties-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1.1fr 1fr 1fr 1fr;
   gap: 16px;
   height: 100%;
 
   .css-editor-selector,
   .common-properties-section,
-  .advanced-properties-section {
+  .advanced-properties-section,
+  .css-editor-preview,
+  .css-editor-footer {
     height: 100%;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 
     > * {
       overflow-y: auto;
@@ -687,5 +731,13 @@ $panel-contrast: #1f2a36;
     display: flex;
     flex-direction: column;
     gap: 8px;
+
+    .selector-input {
+      flex: 0 0 auto;
+    }
+
+    .selector-count {
+      flex: 0 0 auto;
+    }
   }
 }

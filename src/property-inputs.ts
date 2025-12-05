@@ -6,12 +6,40 @@
 /**
  * Property types that determine which input control to use
  */
-export type PropertyInputType = 'color' | 'size' | 'number' | 'text' | 'select';
+export type PropertyInputType = 'color' | 'size' | 'number' | 'text' | 'select' | 'filter';
 
 /**
  * Common CSS units for size properties
  */
 export const CSS_UNITS = ['px', '%', 'em', 'rem', 'vw', 'vh', 'pt', 'auto'];
+
+/**
+ * Filter options for user-friendly filter input
+ */
+export interface FilterOption {
+  type: FilterType;
+  label: string;
+  unit: string;
+  min: number;
+  max: number;
+  step: number;
+  defaultValue: number;
+}
+
+export type FilterType = 'none' | 'blur' | 'grayscale' | 'sepia' | 'brightness' | 'contrast' | 'saturate' | 'invert' | 'hue-rotate' | 'custom';
+
+export const FILTER_OPTIONS: FilterOption[] = [
+  { type: 'none', label: 'Sin filtro', unit: '', min: 0, max: 0, step: 0, defaultValue: 0 },
+  { type: 'blur', label: 'Desenfoque', unit: 'px', min: 0, max: 20, step: 0.5, defaultValue: 5 },
+  { type: 'grayscale', label: 'Escala de grises', unit: '%', min: 0, max: 100, step: 1, defaultValue: 50 },
+  { type: 'sepia', label: 'Sepia', unit: '%', min: 0, max: 100, step: 1, defaultValue: 40 },
+  { type: 'brightness', label: 'Brillo', unit: '%', min: 0, max: 200, step: 1, defaultValue: 100 },
+  { type: 'contrast', label: 'Contraste', unit: '%', min: 0, max: 200, step: 1, defaultValue: 100 },
+  { type: 'saturate', label: 'Saturación', unit: '%', min: 0, max: 200, step: 1, defaultValue: 100 },
+  { type: 'invert', label: 'Invertir', unit: '%', min: 0, max: 100, step: 1, defaultValue: 0 },
+  { type: 'hue-rotate', label: 'Tono (Hue)', unit: 'deg', min: 0, max: 360, step: 1, defaultValue: 0 },
+  { type: 'custom', label: 'Personalizado', unit: '', min: 0, max: 0, step: 0, defaultValue: 0 }
+];
 
 /**
  * Properties that should use color picker
@@ -63,6 +91,9 @@ export function getPropertyInputType(property: string): PropertyInputType {
   }
   if (PERCENTAGE_PROPERTIES.includes(property)) {
     return 'number';
+  }
+  if (property === 'filter') {
+    return 'filter';
   }
   return 'text';
 }
@@ -144,6 +175,7 @@ export function createColorInput(property: string, value: string): string {
 export function createSizeInput(property: string, value: string): string {
   const parsed = parseCSSValue(value);
   const maxValue = property.includes('radius') ? 100 : 500;
+  const sliderValue = mapValueToSizeSlider(parsed.number);
   
   return `
     <div class="property-input-group size-input-group">
@@ -151,9 +183,9 @@ export function createSizeInput(property: string, value: string): string {
              class="size-slider" 
              data-property="${property}"
              min="0" 
-             max="${maxValue}" 
-             step="1"
-             value="${Math.round(parsed.number)}" 
+             max="100" 
+             step="0.1"
+             value="${sliderValue}" 
              title="Adjust value" />
       <input type="number" 
              class="size-number-input" 
@@ -168,6 +200,131 @@ export function createSizeInput(property: string, value: string): string {
       </select>
     </div>
   `;
+}
+
+/**
+ * Create a filter input control with dropdown and slider
+ */
+export function createFilterInput(property: string, value: string): string {
+  const parsed = parseFilterValue(value);
+  const active = getFilterOption(parsed.type) || FILTER_OPTIONS[0];
+  const isCustom = parsed.type === 'custom';
+  const showControls = parsed.type !== 'none' && parsed.type !== 'custom';
+  const sliderValue = showControls ? parsed.value : active.defaultValue;
+
+  return `
+    <div class="property-input-group filter-input-group">
+      <select class="filter-select" data-property="${property}">
+        ${FILTER_OPTIONS.map(opt => `
+          <option 
+            value="${opt.type}" 
+            data-unit="${opt.unit}" 
+            data-min="${opt.min}" 
+            data-max="${opt.max}" 
+            data-step="${opt.step}" 
+            data-default="${opt.defaultValue}"
+            ${opt.type === parsed.type ? 'selected' : ''}>
+            ${opt.label}
+          </option>`).join('')}
+      </select>
+      <div class="filter-controls" data-property="${property}" style="${showControls ? '' : 'display:none;'}">
+        <input type="range"
+               class="filter-slider"
+               data-property="${property}"
+               min="${active.min}"
+               max="${active.max}"
+               step="${active.step}"
+               value="${sliderValue}" />
+        <div class="filter-numeric">
+          <input type="number"
+                 class="filter-number-input"
+                 data-property="${property}"
+                 min="${active.min}"
+                 max="${active.max}"
+                 step="${active.step}"
+                 value="${sliderValue}" />
+          <span class="filter-unit" data-property="${property}">${active.unit}</span>
+        </div>
+      </div>
+      <input type="text"
+             class="filter-custom-input"
+             data-property="${property}"
+             value="${isCustom ? parsed.raw : ''}"
+             placeholder="e.g., blur(4px) drop-shadow(2px 4px 6px #000)"
+             style="${isCustom ? '' : 'display:none;'}" />
+    </div>
+  `;
+}
+
+export function parseFilterValue(value: string): { type: FilterType; value: number; unit: string; raw: string } {
+  const raw = (value || '').trim();
+  if (!raw) {
+    const defaultOption = FILTER_OPTIONS.find(o => o.type === 'blur')!;
+    return { type: 'blur', value: defaultOption.defaultValue, unit: defaultOption.unit, raw: formatFilterValue('blur', defaultOption.defaultValue, defaultOption.unit) };
+  }
+  if (raw === 'none') {
+    return { type: 'none', value: 0, unit: '', raw: 'none' };
+  }
+
+  const match = raw.match(/^([a-z-]+)\(([^)]+)\)$/i);
+  if (match) {
+    const type = match[1] as FilterType;
+    const option = getFilterOption(type);
+    if (option) {
+      const numMatch = match[2].match(/(-?\d*\.?\d+)/);
+      const num = numMatch ? parseFloat(numMatch[1]) : option.defaultValue;
+      return { type, value: num, unit: option.unit, raw };
+    }
+  }
+
+  return { type: 'custom', value: 0, unit: '', raw };
+}
+
+export function formatFilterValue(type: FilterType, value: number, unit: string): string {
+  if (type === 'none') return 'none';
+  if (type === 'custom') return `${value}`;
+  return `${type}(${value}${unit})`;
+}
+
+export function getFilterOption(type: FilterType): FilterOption | undefined {
+  return FILTER_OPTIONS.find(opt => opt.type === type);
+}
+
+/** 
+ * Map slider position (0-100) to a non-linear size value.
+ * 0-35% => 1-30, 35-70% => 31-100, 70-100% => 101-500
+ */
+export function mapSizeSliderToValue(position: number): number {
+  const pos = Math.max(0, Math.min(100, position));
+  if (pos <= 35) {
+    const ratio = pos / 35;
+    return Math.round(1 + ratio * (30 - 1));
+  }
+  if (pos <= 70) {
+    const ratio = (pos - 35) / 35;
+    return Math.round(31 + ratio * (100 - 31));
+  }
+  const ratio = (pos - 70) / 30;
+  return Math.round(101 + ratio * (500 - 101));
+}
+
+/**
+ * Map a size value back to slider position (0-100) using same non-linear scale.
+ */
+export function mapValueToSizeSlider(value: number): number {
+  if (!isFinite(value)) return 0;
+  if (value <= 1) return 0;
+  if (value <= 30) {
+    const ratio = (value - 1) / (30 - 1);
+    return ratio * 35;
+  }
+  if (value <= 100) {
+    const ratio = (value - 31) / (100 - 31);
+    return 35 + ratio * 35;
+  }
+  if (value >= 500) return 100;
+  const ratio = (value - 101) / (500 - 101);
+  return 70 + ratio * 30;
 }
 
 /**

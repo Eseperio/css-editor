@@ -4,7 +4,12 @@ import {
   createColorInput, 
   createSizeInput, 
   createPercentageInput, 
-  parseCSSValue 
+  createFilterInput,
+  parseCSSValue,
+  mapSizeSliderToValue,
+  mapValueToSizeSlider,
+  getFilterOption,
+  formatFilterValue
 } from './property-inputs';
 import './styles/editor-panel.scss';
 
@@ -103,7 +108,12 @@ export class CSSEditorPanel {
       <div class="css-editor-header">
         <h3>CSS Editor</h3>
         <div class="header-actions">
-          <button class="anchor-toggle" title="Cambiar posición del panel">⇔</button>
+          <select class="anchor-select" title="Posición del panel">
+            <option value="right">Derecha</option>
+            <option value="bottom">Abajo</option>
+            <option value="left">Izquierda</option>
+            <option value="top">Arriba</option>
+          </select>
           <button class="css-editor-close" title="Close">&times;</button>
         </div>
       </div>
@@ -115,11 +125,9 @@ export class CSSEditorPanel {
             <div class="selector-count" aria-live="polite"></div>
           </div>
           <div class="common-properties-section">
-            <h4>Common Properties</h4>
             <div class="common-properties"></div>
           </div>
           <div class="advanced-properties-section">
-            <h4>Advanced Properties</h4>
             <button class="add-property-btn" title="Add Property">
               <span class="plus-icon">+</span> Add Property
             </button>
@@ -190,9 +198,15 @@ export class CSSEditorPanel {
     const closeBtn = this.panel.querySelector('.css-editor-close');
     closeBtn?.addEventListener('click', () => this.hide());
 
-    // Anchor toggle button
-    const anchorBtn = this.panel.querySelector('.anchor-toggle');
-    anchorBtn?.addEventListener('click', () => this.cycleAnchorPosition());
+    // Anchor selector
+    const anchorSelect = this.panel.querySelector('.anchor-select') as HTMLSelectElement | null;
+    if (anchorSelect) {
+      anchorSelect.value = this.anchorPosition;
+      anchorSelect.addEventListener('change', () => {
+        const value = anchorSelect.value as 'right' | 'left' | 'top' | 'bottom';
+        this.setAnchorPosition(value);
+      });
+    }
 
     // Add property button
     const addPropertyBtn = this.panel.querySelector('.add-property-btn');
@@ -255,13 +269,10 @@ export class CSSEditorPanel {
   }
 
   /**
-   * Cycle through anchor positions and update panel classes
+   * Set anchor position explicitly
    */
-  private cycleAnchorPosition(): void {
-    const positions: Array<'right' | 'bottom' | 'left' | 'top'> = ['right', 'bottom', 'left', 'top'];
-    const currentIndex = positions.indexOf(this.anchorPosition);
-    const nextIndex = (currentIndex + 1) % positions.length;
-    this.anchorPosition = positions[nextIndex];
+  private setAnchorPosition(position: 'right' | 'left' | 'top' | 'bottom'): void {
+    this.anchorPosition = position;
     this.applyAnchorPosition();
   }
 
@@ -273,6 +284,10 @@ export class CSSEditorPanel {
     const positions: Array<'right' | 'bottom' | 'left' | 'top'> = ['right', 'bottom', 'left', 'top'];
     positions.forEach(pos => this.panel!.classList.remove(`anchor-${pos}`));
     this.panel.classList.add(`anchor-${this.anchorPosition}`);
+    const anchorSelect = this.panel.querySelector('.anchor-select') as HTMLSelectElement | null;
+    if (anchorSelect) {
+      anchorSelect.value = this.anchorPosition;
+    }
   }
 
   /**
@@ -394,6 +409,13 @@ export class CSSEditorPanel {
         <div class="css-property ${isModified ? 'active' : 'disabled'} ${isSpacingSide ? 'spacing-side' : ''}" data-property="${prop}">
           <label>${prop}</label>
           ${createSizeInput(prop, currentValue)}
+        </div>
+      `;
+    } else if (inputType === 'filter') {
+      return `
+        <div class="css-property ${isModified ? 'active' : 'disabled'} ${isSpacingSide ? 'spacing-side' : ''}" data-property="${prop}">
+          <label>${prop}</label>
+          ${createFilterInput(prop, currentValue)}
         </div>
       `;
     } else if (inputType === 'number') {
@@ -616,8 +638,64 @@ export class CSSEditorPanel {
       
       if (!property) return;
       
-      // Handle regular select dropdowns
-      if (target.tagName === 'SELECT' && target.classList.contains('size-unit-selector')) {
+      // Handle filter select first to avoid generic select handler
+      if (target.classList.contains('filter-select')) {
+        target.addEventListener('change', () => {
+          const select = target as HTMLSelectElement;
+          const type = select.value as any;
+          const slider = container.querySelector(`.filter-slider[data-property="${property}"]`) as HTMLInputElement;
+          const numberInput = container.querySelector(`.filter-number-input[data-property="${property}"]`) as HTMLInputElement;
+          const unitEl = container.querySelector(`.filter-unit[data-property="${property}"]`) as HTMLElement;
+          const controls = container.querySelector(`.filter-controls[data-property="${property}"]`) as HTMLElement;
+          const customInput = container.querySelector(`.filter-custom-input[data-property="${property}"]`) as HTMLInputElement;
+          const optEl = select.selectedOptions[0];
+          const unit = optEl?.getAttribute('data-unit') || '';
+          const min = parseFloat(optEl?.getAttribute('data-min') || '0');
+          const max = parseFloat(optEl?.getAttribute('data-max') || '0');
+          const step = parseFloat(optEl?.getAttribute('data-step') || '1');
+          const def = parseFloat(optEl?.getAttribute('data-default') || '0');
+
+          if (type === 'custom') {
+            if (controls) controls.style.display = 'none';
+            if (customInput) {
+              customInput.style.display = '';
+              this.updateProperty(property, customInput.value);
+            }
+            return;
+          }
+
+          if (type === 'none') {
+            if (controls) controls.style.display = 'none';
+            if (customInput) customInput.style.display = 'none';
+            this.updateProperty(property, 'none');
+            return;
+          }
+
+          if (slider && numberInput) {
+            slider.min = min.toString();
+            slider.max = max.toString();
+            slider.step = step.toString();
+            numberInput.min = min.toString();
+            numberInput.max = max.toString();
+            numberInput.step = step.toString();
+
+            if (controls) controls.style.display = '';
+            if (unitEl) {
+              unitEl.style.display = '';
+              unitEl.textContent = unit;
+            }
+            if (customInput) {
+              customInput.style.display = 'none';
+            }
+
+            const currentVal = parseFloat(numberInput.value);
+            const valueToUse = Number.isNaN(currentVal) ? def : currentVal;
+            slider.value = valueToUse.toString();
+            numberInput.value = valueToUse.toString();
+            this.updateProperty(property, formatFilterValue(type, valueToUse, unit));
+          }
+        });
+      } else if (target.tagName === 'SELECT' && target.classList.contains('size-unit-selector')) {
         // Handle unit selector - combine with number input
         target.addEventListener('change', () => {
           this.handleSizeInputChange(property);
@@ -660,11 +738,13 @@ export class CSSEditorPanel {
           this.updateProperty(property, target.value);
         });
       } else if (target.classList.contains('size-slider')) {
-        // Handle size slider
+        // Handle size slider (non-linear mapping)
         target.addEventListener('input', () => {
           const numberInput = container.querySelector(`.size-number-input[data-property="${property}"]`) as HTMLInputElement;
+          const sliderVal = parseFloat((target as HTMLInputElement).value);
+          const mappedValue = mapSizeSliderToValue(sliderVal);
           if (numberInput) {
-            numberInput.value = target.value;
+            numberInput.value = mappedValue.toString();
           }
           this.handleSizeInputChange(property);
         });
@@ -672,8 +752,9 @@ export class CSSEditorPanel {
         // Handle size number input
         target.addEventListener('input', () => {
           const slider = container.querySelector(`.size-slider[data-property="${property}"]`) as HTMLInputElement;
-          if (slider) {
-            slider.value = target.value;
+          const numeric = parseFloat((target as HTMLInputElement).value);
+          if (slider && !Number.isNaN(numeric)) {
+            slider.value = mapValueToSizeSlider(numeric).toString();
           }
           this.handleSizeInputChange(property);
         });
@@ -695,6 +776,34 @@ export class CSSEditorPanel {
           }
           this.updateProperty(property, target.value);
         });
+      } else if (target.classList.contains('filter-slider')) {
+        target.addEventListener('input', () => {
+          const slider = target as HTMLInputElement;
+          const numberInput = container.querySelector(`.filter-number-input[data-property="${property}"]`) as HTMLInputElement;
+          const select = container.querySelector(`.filter-select[data-property="${property}"]`) as HTMLSelectElement;
+          const optEl = select?.selectedOptions[0];
+          const unit = optEl?.getAttribute('data-unit') || '';
+          const type = (select?.value || 'none') as any;
+          const val = parseFloat(slider.value);
+          if (numberInput) numberInput.value = slider.value;
+          this.updateProperty(property, formatFilterValue(type, val, unit));
+        });
+      } else if (target.classList.contains('filter-number-input')) {
+        target.addEventListener('input', () => {
+          const numberInput = target as HTMLInputElement;
+          const slider = container.querySelector(`.filter-slider[data-property="${property}"]`) as HTMLInputElement;
+          const select = container.querySelector(`.filter-select[data-property="${property}"]`) as HTMLSelectElement;
+          const optEl = select?.selectedOptions[0];
+          const unit = optEl?.getAttribute('data-unit') || '';
+          const type = (select?.value || 'none') as any;
+          if (slider) slider.value = numberInput.value;
+          const val = parseFloat(numberInput.value);
+          this.updateProperty(property, formatFilterValue(type, val, unit));
+        });
+      } else if (target.classList.contains('filter-custom-input')) {
+        target.addEventListener('input', () => {
+          this.updateProperty(property, (target as HTMLInputElement).value);
+        });
       } else if (target.tagName === 'INPUT') {
         // Handle regular text inputs
         target.addEventListener('input', () => {
@@ -713,8 +822,14 @@ export class CSSEditorPanel {
     
     const numberInput = container.querySelector(`.size-number-input[data-property="${property}"]`) as HTMLInputElement;
     const unitSelect = container.querySelector(`.size-unit-selector[data-property="${property}"]`) as HTMLSelectElement;
+    const sliderInput = container.querySelector(`.size-slider[data-property="${property}"]`) as HTMLInputElement;
     
     if (numberInput && unitSelect) {
+      const numericValue = parseFloat(numberInput.value);
+      if (sliderInput && !Number.isNaN(numericValue)) {
+        sliderInput.value = mapValueToSizeSlider(numericValue).toString();
+      }
+
       // If unit is 'auto', just use 'auto' without the number
       const value = unitSelect.value === 'auto' ? 'auto' : `${numberInput.value}${unitSelect.value}`;
       this.updateProperty(property, value);
