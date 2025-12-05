@@ -1471,8 +1471,8 @@ export class CSSEditorPanel {
   private parseSelectorIntoParts(selector: string, element: Element): void {
     this.selectorParts = [];
     
-    // Split by > or space (but preserve them)
-    const parts = selector.split(/(\s+>|\s+)/);
+    // Split by > or space (but preserve them) - handle spaces around >
+    const parts = selector.split(/(\s*>\s*|\s+)/);
     let currentElement = element;
     
     // Process in reverse (from element to root)
@@ -1491,18 +1491,19 @@ export class CSSEditorPanel {
       let positionValue: number | undefined;
       let cleanSelector = part;
       
-      // Check for :nth-of-type or :nth-child
-      const nthMatch = part.match(/:nth-of-type\((\d+)\)|:nth-of-type\(even\)|:nth-of-type\(odd\)|:nth-child\((\d+)\)/);
+      // Check for :nth-of-type or :nth-child (including even/odd)
+      const nthMatch = part.match(/:nth-of-type\((\d+|even|odd)\)|:nth-child\((\d+|even|odd)\)/);
       if (nthMatch) {
-        if (nthMatch[0].includes('even')) {
+        const value = nthMatch[1] || nthMatch[2];
+        if (value === 'even') {
           positionType = 'even';
-        } else if (nthMatch[0].includes('odd')) {
+        } else if (value === 'odd') {
           positionType = 'odd';
         } else {
           positionType = 'position';
-          positionValue = parseInt(nthMatch[1] || nthMatch[2]);
+          positionValue = parseInt(value);
         }
-        cleanSelector = part.replace(/:nth-of-type\((\d+|even|odd)\)|:nth-child\(\d+\)/, '');
+        cleanSelector = part.replace(/:nth-of-type\((\d+|even|odd)\)|:nth-child\((\d+|even|odd)\)/, '');
       }
       
       // Count siblings if we have the element
@@ -1510,7 +1511,7 @@ export class CSSEditorPanel {
       if (currentElement && currentElement.parentElement) {
         // Extract tag name, handling selectors that start with class or ID
         let tagName = cleanSelector.split(/[.#:]/)[0];
-        if (!tagName) {
+        if (!tagName || tagName === '') {
           // If selector starts with . or #, use the element's tag name
           tagName = currentElement.tagName.toLowerCase();
         }
