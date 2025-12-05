@@ -6,6 +6,10 @@ import { CSSEditorPanel, CSSEditorOptions } from './editor-panel';
  * Main CSSEditor class
  */
 export class CSSEditor {
+  // Task 2: Text constants for activator button
+  private static readonly ACTIVATOR_TEXT_INACTIVE = 'Press here to enter style editor';
+  private static readonly ACTIVATOR_TEXT_ACTIVE = 'Click any element to edit its styles';
+  
   private picker: ElementPicker;
   private panel: CSSEditorPanel; 
   private activateButton: HTMLElement | null = null;
@@ -82,7 +86,7 @@ export class CSSEditor {
     // Task 2: Create fixed top bar instead of floating button
     this.activateButton = document.createElement('div');
     this.activateButton.id = 'css-editor-activate';
-    this.activateButton.textContent = 'Press here to enter style editor';
+    this.activateButton.textContent = CSSEditor.ACTIVATOR_TEXT_INACTIVE;
     this.activateButton.title = 'Activate CSS Editor';
     
     const style = document.createElement('style');
@@ -130,14 +134,14 @@ export class CSSEditor {
         this.activateButton?.classList.remove('active');
         // Task 2: Reset text when deactivating
         if (!this.options.activatorSelector) {
-          this.activateButton!.textContent = 'Press here to enter style editor';
+          this.activateButton!.textContent = CSSEditor.ACTIVATOR_TEXT_INACTIVE;
         }
       } else {
         this.startPicking();
         this.activateButton?.classList.add('active');
         // Task 2: Update text when activating
         if (!this.options.activatorSelector) {
-          this.activateButton!.textContent = 'Click any element to edit its styles';
+          this.activateButton!.textContent = CSSEditor.ACTIVATOR_TEXT_ACTIVE;
         }
       }
     });

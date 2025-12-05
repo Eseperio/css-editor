@@ -71,12 +71,7 @@ export class CSSEditorPanel {
    */
   public show(selector: string, element: Element): void {
     // Task 3: Save current element changes before switching to a new element
-    if (this.currentSelector && this.modifiedProperties.size > 0) {
-      this.allElementChanges.set(this.currentSelector, {
-        styles: new Map(this.currentStyles),
-        modifiedProperties: new Set(this.modifiedProperties)
-      });
-    }
+    this.saveCurrentElementChanges();
     
     this.currentSelector = selector;
     this.loadCurrentStyles(element);
@@ -85,7 +80,7 @@ export class CSSEditorPanel {
     const previousChanges = this.allElementChanges.get(selector);
     if (previousChanges) {
       this.modifiedProperties = new Set(previousChanges.modifiedProperties);
-      // Merge previous modified styles with current computed styles
+      // Override computed styles with previous modified styles (after loadCurrentStyles)
       previousChanges.modifiedProperties.forEach(prop => {
         const value = previousChanges.styles.get(prop);
         if (value) {
@@ -105,6 +100,19 @@ export class CSSEditorPanel {
     this.updatePanel();
     this.panel!.style.display = 'block';
     this.applyAnchorPosition();
+  }
+
+  /**
+   * Save current element changes to storage
+   * Task 3: Helper method to avoid code duplication
+   */
+  private saveCurrentElementChanges(): void {
+    if (this.currentSelector && this.modifiedProperties.size > 0) {
+      this.allElementChanges.set(this.currentSelector, {
+        styles: new Map(this.currentStyles),
+        modifiedProperties: new Set(this.modifiedProperties)
+      });
+    }
   }
 
   /**
@@ -1216,13 +1224,8 @@ export class CSSEditorPanel {
    * Task 3: Include all element changes, not just the current element
    */
   private generateCSS(): string {
-    // Save current element changes
-    if (this.currentSelector && this.modifiedProperties.size > 0) {
-      this.allElementChanges.set(this.currentSelector, {
-        styles: new Map(this.currentStyles),
-        modifiedProperties: new Set(this.modifiedProperties)
-      });
-    }
+    // Task 3: Save current element changes before generating CSS
+    this.saveCurrentElementChanges();
     
     // Generate CSS for all elements with changes
     if (this.allElementChanges.size === 0) {
