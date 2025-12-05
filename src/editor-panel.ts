@@ -77,6 +77,24 @@ export class CSSEditorPanel {
     this.loadCurrentStyles(element);
     
     // Task 3: Load previous changes for this element if they exist
+    this.loadPreviousElementChanges(selector);
+    
+    this.advancedProperties.clear(); // Reset advanced properties for new element
+    
+    if (!this.panel) {
+      this.createPanel();
+    }
+    
+    this.updatePanel();
+    this.panel!.style.display = 'block';
+    this.applyAnchorPosition();
+  }
+
+  /**
+   * Load previous element changes from storage
+   * Task 3: Helper method for better readability
+   */
+  private loadPreviousElementChanges(selector: string): void {
     const previousChanges = this.allElementChanges.get(selector);
     if (previousChanges) {
       this.modifiedProperties = new Set(previousChanges.modifiedProperties);
@@ -90,16 +108,6 @@ export class CSSEditorPanel {
     } else {
       this.modifiedProperties.clear(); // Reset modified properties for new element
     }
-    
-    this.advancedProperties.clear(); // Reset advanced properties for new element
-    
-    if (!this.panel) {
-      this.createPanel();
-    }
-    
-    this.updatePanel();
-    this.panel!.style.display = 'block';
-    this.applyAnchorPosition();
   }
 
   /**
