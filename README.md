@@ -11,6 +11,7 @@ A powerful visual CSS editing tool for any HTML page. Pick elements interactivel
 - 💾 **Save & Load**: Optional endpoints for loading and saving CSS to your backend
 - 📋 **Export**: Copy generated CSS to clipboard
 - 🎭 **Non-intrusive**: Floating button that stays out of your way
+- 🌍 **Multi-language**: Built-in support for English and Spanish, easy to add more languages
 
 ## Installation
 
@@ -45,6 +46,9 @@ Include the library in your HTML:
 
 ```javascript
 const editor = new CSSEditor.CSSEditor({
+  // Optional: Set language (en, es-ES)
+  locale: 'es-ES',
+  
   // Optional: Backend endpoint to save CSS
   saveEndpoint: '/api/save-css',
   
@@ -110,6 +114,7 @@ constructor(options?: CSSEditorOptions)
 
 | Option | Type | Description |
 |--------|------|-------------|
+| `locale` | `'en' \| 'es-ES'` | Language for the UI (default: 'en'). See [i18n docs](docs/i18n.md) |
 | `saveEndpoint` | `string` | URL endpoint for saving CSS (POST request) |
 | `loadEndpoint` | `string` | URL endpoint for loading CSS (GET request) |
 | `onSave` | `(css: string) => void` | Callback function when save button is clicked |
@@ -183,6 +188,14 @@ Watches for changes and rebuilds automatically.
 ### Example
 
 Open `example/index.html` in your browser to see a live demo.
+
+### Internationalization
+
+The CSS Editor supports multiple languages. See the [i18n documentation](docs/i18n.md) for details on:
+- Available languages
+- Setting and changing locale
+- Adding new languages
+- Translation file structure
 
 ## Browser Support
 
