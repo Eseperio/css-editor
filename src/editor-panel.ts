@@ -129,7 +129,6 @@ export class CSSEditorPanel {
     
     this.panel.innerHTML = `
       <div class="css-editor-header">
-        <h3>${t('ui.panel.title')}</h3>
         <div class="header-actions">
           <button class="theme-toggle" title="Toggle theme">
             <span class="theme-icon">${this.theme === 'dark' ? '☀️' : '🌙'}</span>

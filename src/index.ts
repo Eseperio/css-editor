@@ -7,7 +7,7 @@ import { CSSEditorPanel, CSSEditorOptions } from './editor-panel';
  */
 export class CSSEditor {
   private picker: ElementPicker;
-  private panel: CSSEditorPanel;
+  private panel: CSSEditorPanel; 
   private activateButton: HTMLElement | null = null;
 
   constructor(options: CSSEditorOptions = {}) {

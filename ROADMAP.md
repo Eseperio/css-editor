@@ -12,3 +12,5 @@
   then options like "only position 1", "only position 2", etc, up to the number of siblings of that type. This allows to
   refine the selector to avoid overbroad or overspecific selectors. Changes on this configuration update the selector
   input, and therefore the css rules generated.
+- [ ] When user hovers the selector input, highlight the element(s) matching that selector in the page with the blue
+  overlay.

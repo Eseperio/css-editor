@@ -306,8 +306,8 @@ $panel-height-horizontal: 300px;
     .add-property-btn {
       width: 100%;
       padding: 10px;
-      background: var(--editor-success);
-      border: none;
+      background: transparent;
+      border: 1px dashed var(--editor-border);
       color: white;
       border-radius: var(--editor-radius-sm);
       cursor: pointer;
@@ -321,7 +321,7 @@ $panel-height-horizontal: 300px;
       margin-bottom: 12px;
 
       &:hover {
-        background: var(--editor-success-hover);
+        background: rgba(255, 255, 255, 0.05);
       }
     }
 
