@@ -100,7 +100,9 @@ export function detectBrowserLocale(): Locale {
   }
 
   // Get browser language preference
-  const browserLang = navigator.language || (navigator as any).userLanguage;
+  // TypeScript doesn't include userLanguage, but it exists on IE
+  const nav = navigator as { language?: string; userLanguage?: string };
+  const browserLang = nav.language || nav.userLanguage;
   
   if (!browserLang) {
     return 'en';

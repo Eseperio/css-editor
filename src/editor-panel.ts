@@ -322,21 +322,23 @@ export class CSSEditorPanel {
    * Change the locale and refresh the panel
    */
   private changeLocale(locale: Locale): void {
+    if (!this.panel) return;
+    
     setLocale(locale);
     
-    // Remove the current panel
-    if (this.panel) {
-      this.panel.remove();
-      this.panel = null;
-    }
+    // Remove and recreate the panel
+    this.panel.remove();
+    this.panel = null;
     
-    // Recreate the panel with new translations
+    // Recreate with new translations
     this.createPanel();
     
-    // Restore the panel state
+    // Restore the panel state - createPanel() guarantees this.panel is not null
     this.updatePanel();
-    this.panel!.style.display = 'block';
     this.applyAnchorPosition();
+    
+    // Ensure the recreated panel is visible
+    this.panel!.style.display = 'block';
   }
 
   /**
