@@ -63,6 +63,8 @@ export class CSSEditorPanel {
   // Task 4: Selector configuration
   private selectorParts: SelectorPart[] = [];
   private selectorConfigExpanded: boolean = false;
+  // Task 5: Hover highlight overlays for selector
+  private highlightOverlays: HTMLElement[] = [];
 
   constructor(options: CSSEditorOptions = {}) {
     this.options = options;
@@ -338,6 +340,13 @@ export class CSSEditorPanel {
     // Task 4: Selector config toggle button
     const selectorConfigToggle = this.panel.querySelector('.selector-config-toggle');
     selectorConfigToggle?.addEventListener('click', () => this.toggleSelectorConfig());
+
+    // Task 5: Hover highlight for selector input
+    const selectorInput = this.panel.querySelector('.selector-input') as HTMLInputElement;
+    if (selectorInput) {
+      selectorInput.addEventListener('mouseenter', () => this.highlightMatchingElements(this.currentSelector));
+      selectorInput.addEventListener('mouseleave', () => this.removeHighlights());
+    }
   }
 
   /**
@@ -1643,6 +1652,19 @@ export class CSSEditorPanel {
         this.updateSelectorPartCombinator(index, target.value as '>' | ' ');
       });
     });
+
+    // Task 5: Hover highlight for selector parts
+    const selectorParts = configPanel.querySelectorAll('.selector-part');
+    selectorParts.forEach(part => {
+      part.addEventListener('mouseenter', (e) => {
+        const target = e.currentTarget as HTMLElement;
+        const index = parseInt(target.dataset.index || '0');
+        this.highlightSelectorUpToIndex(index);
+      });
+      part.addEventListener('mouseleave', () => {
+        this.removeHighlights();
+      });
+    });
   }
 
   /**
@@ -1759,6 +1781,80 @@ export class CSSEditorPanel {
   }
 
   /**
+   * Task 5: Highlight elements matching a selector
+   */
+  private highlightMatchingElements(selector: string): void {
+    if (!selector) return;
+    
+    try {
+      const elements = document.querySelectorAll(selector);
+      
+      elements.forEach(element => {
+        const rect = element.getBoundingClientRect();
+        const overlay = document.createElement('div');
+        overlay.className = 'css-editor-selector-highlight';
+        overlay.style.cssText = `
+          position: fixed;
+          top: ${rect.top}px;
+          left: ${rect.left}px;
+          width: ${rect.width}px;
+          height: ${rect.height}px;
+          background: rgba(255, 235, 59, 0.3);
+          border: 2px solid rgba(255, 193, 7, 0.8);
+          pointer-events: none;
+          z-index: 9998;
+          transition: all 0.2s ease;
+        `;
+        document.body.appendChild(overlay);
+        this.highlightOverlays.push(overlay);
+      });
+    } catch (e) {
+      // Invalid selector, do nothing
+    }
+  }
+
+  /**
+   * Task 5: Highlight elements matching selector up to a specific part
+   */
+  private highlightSelectorUpToIndex(index: number): void {
+    // Build selector up to the specified index
+    let selector = '';
+    
+    for (let i = 0; i <= index; i++) {
+      const part = this.selectorParts[i];
+      if (!part) continue;
+      
+      selector += part.selector;
+      
+      // Add position specifier
+      if (part.positionType === 'position' && part.positionValue) {
+        selector += `:nth-of-type(${part.positionValue})`;
+      } else if (part.positionType === 'even') {
+        selector += ':nth-of-type(even)';
+      } else if (part.positionType === 'odd') {
+        selector += ':nth-of-type(odd)';
+      }
+      
+      // Add combinator (except for last part)
+      if (i < index) {
+        selector += part.combinator === '>' ? ' > ' : ' ';
+      }
+    }
+    
+    this.highlightMatchingElements(selector);
+  }
+
+  /**
+   * Task 5: Remove all highlight overlays
+   */
+  private removeHighlights(): void {
+    this.highlightOverlays.forEach(overlay => {
+      overlay.remove();
+    });
+    this.highlightOverlays = [];
+  }
+
+  /**
    * Destroy the panel
    * Task 3: Clean up all element changes to prevent memory leaks
    */
@@ -1772,5 +1868,7 @@ export class CSSEditorPanel {
     }
     // Clear all stored element changes to prevent memory leaks
     this.allElementChanges.clear();
+    // Task 5: Remove any remaining highlights
+    this.removeHighlights();
   }
 }
