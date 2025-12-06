@@ -756,9 +756,12 @@ export class CSSEditorPanel {
       const isCustomValue = !!trimmedValue && !hasSuggestion;
       const translatedProp = translateProperty(prop);
       
+      // Task 8: Wrap each advanced property in a subpanel
+      let propertyContent = '';
+      
       // If property has predefined suggestions, use dropdown
       if (suggestions.length > 0) {
-        return `
+        propertyContent = `
           <div class="css-property active" data-property="${prop}">
             <label>${translatedProp}</label>
             <select data-property="${prop}">
@@ -773,7 +776,7 @@ export class CSSEditorPanel {
           </div>
         `;
       } else if (inputType === 'color') {
-        return `
+        propertyContent = `
           <div class="css-property active" data-property="${prop}">
             <label>${translatedProp}</label>
             ${createColorInput(prop, currentValue)}
@@ -781,7 +784,7 @@ export class CSSEditorPanel {
           </div>
         `;
       } else if (inputType === 'size') {
-        return `
+        propertyContent = `
           <div class="css-property active" data-property="${prop}">
             <label>${translatedProp}</label>
             ${createSizeInput(prop, currentValue)}
@@ -789,7 +792,7 @@ export class CSSEditorPanel {
           </div>
         `;
       } else if (inputType === 'number') {
-        return `
+        propertyContent = `
           <div class="css-property active" data-property="${prop}">
             <label>${translatedProp}</label>
             ${createPercentageInput(prop, currentValue)}
@@ -797,7 +800,7 @@ export class CSSEditorPanel {
           </div>
         `;
       } else {
-        return `
+        propertyContent = `
           <div class="css-property active" data-property="${prop}">
             <label>${translatedProp}</label>
             <input type="text" data-property="${prop}" value="${currentValue}" placeholder="${t('ui.inputs.enterValue')}" />
@@ -805,6 +808,9 @@ export class CSSEditorPanel {
           </div>
         `;
       }
+      
+      // Task 8: Wrap in subpanel div
+      return `<div class="advanced-property-subpanel">${propertyContent}</div>`;
     }).join('');
 
     this.attachPropertyListeners(container);

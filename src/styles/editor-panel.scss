@@ -524,6 +524,23 @@ $panel-height-horizontal: 300px;
       border: 1px solid var(--editor-border);
     }
 
+    /* Task 8: Subpanel styling for advanced properties */
+    .advanced-property-subpanel {
+      background: var(--editor-bg-elevated);
+      border-radius: var(--editor-radius-sm);
+      padding: 10px;
+      margin-bottom: 10px;
+      border: 1px solid var(--editor-border);
+      
+      &:last-child {
+        margin-bottom: 0;
+      }
+      
+      .css-property {
+        margin-bottom: 0;
+      }
+    }
+
     .property-input-group {
       display: flex;
       gap: 6px;

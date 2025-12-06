@@ -17,7 +17,7 @@
 - [x] Margin items overflow because they are in a subpanel. Fix it.
 - [x] Allow to customize the action buttons in panel by changing labels, toggle visibility of each one, also ability to
   hide generated panel
-- [ ] Add some kind of subpanel (may be simply a rectangle without border but slightly dark background) for each
+- [x] Add some kind of subpanel (may be simply a rectangle without border but slightly dark background) for each
   advanced rule.
 - [ ] Ensure that the options already available in groups are not repeated in advanced panel.
 - [ ] The border properties can be defined independently for each side, so we need to do something like with padding
