@@ -94,7 +94,6 @@ export class CSSEditor {
       #css-editor-activate {
         position: fixed;
         top: 0;
-        width: 100%;
         background: rgba(0, 0, 0, 0.85);
         color: white;
         padding: 10px 20px;
