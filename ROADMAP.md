@@ -12,11 +12,13 @@
   then options like "only position 1", "only position 2", etc, up to the number of siblings of that type. This allows to
   refine the selector to avoid overbroad or overspecific selectors. Changes on this configuration update the selector
   input, and therefore the css rules generated.
-- [ ] When user hovers the selector input, highlight the element(s) matching that selector in the page with the blue
+- [x] When user hovers the selector input, highlight the element(s) matching that selector in the page with the blue
   overlay.
 - [ ] Margin items overflow because they are in a subpanel. Fix it.
-- [ ] Allow to customize the action buttons in pannel, enabling or disabling them, also the css generated panel
-- [ ] Add some kind of subpanel for each advanced rule.
+- [ ] Allow to customize the action buttons in panel by changing labels, toggle visibility of each one, also ability to
+  hide generated panel
+- [ ] Add some kind of subpanel (may be simply a rectangle without border but slightly dark background) for each
+  advanced rule.
 - [ ] Ensure that the options already available in groups are not repeated in advanced panel.
 - [ ] The border properties can be defined independently for each side, so we need to do something like with padding
   and margin, to allow user to define different values for each side.
