@@ -27,6 +27,14 @@ export interface CSSEditorOptions {
   fontFamilies?: string[];
   locale?: Locale;
   activatorSelector?: string; // Task 1: Allow custom activator element selector
+  // Task 7: Customize action buttons
+  buttons?: {
+    save?: { label?: string; visible?: boolean };
+    load?: { label?: string; visible?: boolean };
+    export?: { label?: string; visible?: boolean };
+    clear?: { label?: string; visible?: boolean };
+  };
+  showGeneratedCSS?: boolean; // Task 7: Option to hide generated CSS panel
 }
 
 /**
@@ -231,15 +239,17 @@ export class CSSEditorPanel {
         </div>
       </div>
       <div class="css-editor-footer">
-        <button class="css-editor-save">${t('ui.panel.saveCSS')}</button>
-        ${this.options.loadEndpoint ? `<button class="css-editor-load">${t('ui.panel.loadCSS')}</button>` : ''}
-        <button class="css-editor-export">${t('ui.panel.exportCSS')}</button>
-        <button class="css-editor-clear">${t('ui.panel.clearChanges')}</button>
+        ${this.isButtonVisible('save') ? `<button class="css-editor-save">${this.getButtonLabel('save')}</button>` : ''}
+        ${this.isButtonVisible('load') && this.options.loadEndpoint ? `<button class="css-editor-load">${this.getButtonLabel('load')}</button>` : ''}
+        ${this.isButtonVisible('export') ? `<button class="css-editor-export">${this.getButtonLabel('export')}</button>` : ''}
+        ${this.isButtonVisible('clear') ? `<button class="css-editor-clear">${this.getButtonLabel('clear')}</button>` : ''}
       </div>
+      ${this.options.showGeneratedCSS !== false ? `
       <div class="css-editor-preview">
         <h4>${t('ui.panel.generatedCSS')}</h4>
         <pre class="css-output"></pre>
       </div>
+      ` : ''}
     `;
 
     this.addPanelStyles();
@@ -1852,6 +1862,29 @@ export class CSSEditorPanel {
       overlay.remove();
     });
     this.highlightOverlays = [];
+  }
+
+  /**
+   * Task 7: Check if a button should be visible
+   */
+  private isButtonVisible(button: 'save' | 'load' | 'export' | 'clear'): boolean {
+    return this.options.buttons?.[button]?.visible !== false;
+  }
+
+  /**
+   * Task 7: Get custom label for a button or default
+   */
+  private getButtonLabel(button: 'save' | 'load' | 'export' | 'clear'): string {
+    const customLabel = this.options.buttons?.[button]?.label;
+    if (customLabel) return customLabel;
+    
+    // Default labels
+    switch (button) {
+      case 'save': return t('ui.panel.saveCSS');
+      case 'load': return t('ui.panel.loadCSS');
+      case 'export': return t('ui.panel.exportCSS');
+      case 'clear': return t('ui.panel.clearChanges');
+    }
   }
 
   /**
