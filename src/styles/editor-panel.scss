@@ -865,124 +865,133 @@ $panel-height-horizontal: 300px;
       overflow-y: auto;
     }
   }
+}
 
-  .css-editor-selector {
+// Task 4: Selector configuration styles - apply to all anchor positions
+.css-editor-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  .selector-header {
     display: flex;
-    flex-direction: column;
+    align-items: center;
     gap: 8px;
 
-    .selector-header {
+    label {
+      flex: 1;
+    }
+
+    .selector-config-toggle {
+      background: var(--editor-bg-muted);
+      border: 1px solid var(--editor-border);
+      border-radius: var(--editor-radius-xs);
+      padding: 4px 8px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s ease;
+
+      &:hover {
+        background: var(--editor-accent-light);
+        border-color: var(--editor-accent);
+        color: var(--editor-accent);
+      }
+    }
+  }
+
+  .selector-input {
+    flex: 0 0 auto;
+  }
+
+  .selector-count {
+    flex: 0 0 auto;
+  }
+
+  .selector-config-panel {
+    background: var(--editor-bg-elevated);
+    border: 1px solid var(--editor-border);
+    border-radius: var(--editor-radius-sm);
+    padding: 12px;
+    margin-top: 8px;
+
+    .selector-config-content {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .selector-part-container {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      position: relative;
+    }
+
+    .selector-part {
       display: flex;
       align-items: center;
       gap: 8px;
+      padding: 10px 12px;
+      background: var(--editor-bg-muted);
+      border: 2px solid var(--editor-border-strong);
+      border-radius: var(--editor-radius-xs);
+      position: relative;
+      z-index: 1;
 
-      label {
+      .selector-part-label {
         flex: 1;
+        font-family: 'Courier New', monospace;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--editor-accent);
       }
 
-      .selector-config-toggle {
-        background: var(--editor-bg-muted);
+      .selector-position-type {
+        min-width: 120px;
+        padding: 4px 8px;
         border: 1px solid var(--editor-border);
         border-radius: var(--editor-radius-xs);
-        padding: 4px 8px;
+        background: var(--editor-input-bg);
+        color: var(--editor-text);
+        font-size: 12px;
         cursor: pointer;
-        font-size: 14px;
-        transition: all 0.2s ease;
 
-        &:hover {
-          background: var(--editor-accent-light);
+        &:focus {
+          outline: none;
           border-color: var(--editor-accent);
-          color: var(--editor-accent);
         }
       }
     }
 
-    .selector-input {
-      flex: 0 0 auto;
-    }
+    .selector-combinator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0;
+      position: relative;
+      height: 24px;
+      margin-left: 20px;
 
-    .selector-count {
-      flex: 0 0 auto;
-    }
-
-    .selector-config-panel {
-      background: var(--editor-bg-elevated);
-      border: 1px solid var(--editor-border);
-      border-radius: var(--editor-radius-sm);
-      padding: 12px;
-      margin-top: 8px;
-
-      .selector-config-content {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
+      .combinator-line {
+        width: 3px;
+        height: 100%;
+        background: var(--editor-border-strong);
+        border-radius: 2px;
       }
 
-      .selector-part-container {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-      }
-
-      .selector-part {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px;
-        background: var(--editor-bg-muted);
+      .selector-combinator-type {
+        padding: 4px 8px;
+        border: 1px solid var(--editor-border);
         border-radius: var(--editor-radius-xs);
+        background: var(--editor-input-bg);
+        color: var(--editor-text);
+        font-size: 11px;
+        cursor: pointer;
+        margin-left: 8px;
 
-        .selector-part-label {
-          flex: 1;
-          font-family: 'Courier New', monospace;
-          font-size: 13px;
-          color: var(--editor-accent);
-        }
-
-        .selector-position-type {
-          min-width: 120px;
-          padding: 4px 8px;
-          border: 1px solid var(--editor-border);
-          border-radius: var(--editor-radius-xs);
-          background: var(--editor-input-bg);
-          color: var(--editor-text);
-          font-size: 12px;
-          cursor: pointer;
-
-          &:focus {
-            outline: none;
-            border-color: var(--editor-accent);
-          }
-        }
-      }
-
-      .selector-combinator {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 0 8px;
-        position: relative;
-
-        .combinator-line {
-          width: 2px;
-          height: 16px;
-          background: var(--editor-border-strong);
-          margin-left: 8px;
-        }
-
-        .selector-combinator-type {
-          padding: 4px 8px;
-          border: 1px solid var(--editor-border);
-          border-radius: var(--editor-radius-xs);
-          background: var(--editor-input-bg);
-          color: var(--editor-text);
-          font-size: 12px;
-          cursor: pointer;
-
-          &:focus {
-            outline: none;
-            border-color: var(--editor-accent);
-          }
+        &:focus {
+          outline: none;
+          border-color: var(--editor-accent);
         }
       }
     }
