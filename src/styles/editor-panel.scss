@@ -932,8 +932,7 @@ $panel-height-horizontal: 300px;
       align-items: center;
       gap: 8px;
       padding: 10px 12px;
-      background: var(--editor-bg-muted);
-      border: 2px solid var(--editor-border-strong);
+      background: var(--editor-border-strong);
       border-radius: var(--editor-radius-xs);
       position: relative;
       z-index: 1;
@@ -969,7 +968,7 @@ $panel-height-horizontal: 300px;
       gap: 8px;
       padding: 0;
       position: relative;
-      height: 24px;
+      height: 60px;
       margin-left: 20px;
 
       .combinator-line {
