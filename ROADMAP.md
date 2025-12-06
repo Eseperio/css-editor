@@ -19,8 +19,8 @@
   hide generated panel
 - [x] Add some kind of subpanel (may be simply a rectangle without border but slightly dark background) for each
   advanced rule.
-- [ ] Ensure that the options already available in groups are not repeated in advanced panel.
-- [ ] The border properties can be defined independently for each side, so we need to do something like with padding
+- [x] Ensure that the options already available in groups are not repeated in advanced panel.
+- [x] The border properties can be defined independently for each side, so we need to do something like with padding
   and margin, to allow user to define different values for each side.
 - [ ] There are still many properties in advanced panel that can be added to main groups. Review them and add the most
   useful ones.

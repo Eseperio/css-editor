@@ -22,6 +22,11 @@ export const SPACING_PROPERTIES: SpacingProperty[] = [
   {
     general: 'padding',
     sides: ['padding-top', 'padding-right', 'padding-bottom', 'padding-left']
+  },
+  // Task 10: Add border properties per side
+  {
+    general: 'border',
+    sides: ['border-top', 'border-right', 'border-bottom', 'border-left']
   }
 ];
 
