@@ -133,8 +133,7 @@ export const PROPERTY_GROUPS: PropertyGroup[] = [
       'grid-row',
       'grid-area',
       'grid-gap',
-      'justify-items',
-      'align-items'
+      'justify-items'
     ],
     dependsOn: {         // Task 12: Grid properties depend on display: grid
       property: 'display',
