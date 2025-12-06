@@ -22,8 +22,8 @@
 - [x] Ensure that the options already available in groups are not repeated in advanced panel.
 - [x] The border properties can be defined independently for each side, so we need to do something like with padding
   and margin, to allow user to define different values for each side.
-- [ ] There are still many properties in advanced panel that can be added to main groups. Review them and add the most
+- [x] There are still many properties in advanced panel that can be added to main groups. Review them and add the most
   useful ones.
-- [ ] There are a set of properties that are dependant on others, like align-items that only makes sense if display is
+- [x] There are a set of properties that are dependant on others, like align-items that only makes sense if display is
   flex or grid. We should hide or disable those properties when they don't make sense. Also those properties must be in
   same panel. So whenever a user changes display to flex, the flex properties appear in the same panel.

@@ -405,6 +405,13 @@ $panel-height-horizontal: 300px;
       overflow: hidden;
       border: 1px solid var(--editor-border);
 
+      /* Task 12: Visual styling for groups with unmet dependencies */
+      &.dependency-unmet {
+        opacity: 0.7;
+        border-color: rgba(255, 193, 7, 0.3);
+        background: var(--editor-bg-muted);
+      }
+
       .property-group-header {
         display: flex;
         align-items: center;
@@ -439,6 +446,15 @@ $panel-height-horizontal: 300px;
           color: var(--editor-text);
           text-transform: uppercase;
           letter-spacing: 0.3px;
+        }
+
+        /* Task 12: Dependency warning icon */
+        .dependency-warning {
+          font-size: 16px;
+          margin-left: 6px;
+          cursor: help;
+          flex-shrink: 0;
+          filter: drop-shadow(0 0 2px rgba(255, 193, 7, 0.5));
         }
 
         .property-group-toggle {

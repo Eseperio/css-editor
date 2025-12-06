@@ -4,6 +4,16 @@
 export interface PropertyGroup {
   name: string;
   properties: string[];
+  dependsOn?: PropertyDependency;  // Task 12: Optional dependency
+}
+
+/**
+ * Task 12: Property dependency configuration
+ */
+export interface PropertyDependency {
+  property: string;        // The property to check (e.g., 'display')
+  values: string[];        // Values that activate this group (e.g., ['flex'])
+  warning: string;         // Warning message when dependency not met
 }
 
 /**
@@ -45,14 +55,19 @@ export const PROPERTY_GROUPS: PropertyGroup[] = [
       'border-width',
       'border-style',
       'border-color',
-      'border-radius'
+      'border-radius',
+      'box-shadow'  // Task 11: Added box-shadow to Border group
     ]
   },
   {
     name: 'Size',
     properties: [
       'width',
-      'height'
+      'height',
+      'min-width',   // Task 11: Added min/max width/height
+      'max-width',
+      'min-height',
+      'max-height'
     ]
   },
   {
@@ -63,15 +78,69 @@ export const PROPERTY_GROUPS: PropertyGroup[] = [
       'font-size',
       'font-weight',
       'font-style',
-      'text-align'
+      'text-align',
+      'line-height',       // Task 11: Added useful text properties
+      'text-decoration',
+      'text-transform',
+      'letter-spacing',
+      'word-spacing'
     ]
   },
   {
     name: 'Layout',
     properties: [
       'display',
-      'position'
+      'position',
+      'top',              // Task 11: Added position properties
+      'right',
+      'bottom',
+      'left',
+      'z-index',
+      'overflow',
+      'float',
+      'clear'
     ]
+  },
+  {
+    name: 'Flexbox',      // Task 11 & 12: New group for flex properties
+    properties: [
+      'flex-direction',
+      'flex-wrap',
+      'justify-content',
+      'align-items',
+      'align-content',
+      'gap',
+      'flex',
+      'flex-grow',
+      'flex-shrink',
+      'flex-basis',
+      'align-self',
+      'order'
+    ],
+    dependsOn: {         // Task 12: Flexbox properties depend on display: flex
+      property: 'display',
+      values: ['flex', 'inline-flex'],
+      warning: 'This property only applies when display is flex or inline-flex'
+    }
+  },
+  {
+    name: 'Grid',         // Task 11 & 12: New group for grid properties
+    properties: [
+      'grid-template-columns',
+      'grid-template-rows',
+      'grid-template-areas',
+      'grid-column',
+      'grid-row',
+      'grid-area',
+      'grid-gap',
+      'justify-items',
+      'align-items'
+    ],
+    dependsOn: {         // Task 12: Grid properties depend on display: grid
+      property: 'display',
+      values: ['grid', 'inline-grid'],
+      warning: 'This property only applies when display is grid or inline-grid'
+    }
   },
   {
     name: 'Background',
@@ -90,7 +159,11 @@ export const PROPERTY_GROUPS: PropertyGroup[] = [
     name: 'Effects',
     properties: [
       'opacity',
-      'filter'
+      'filter',
+      'transform',        // Task 11: Added transform, transition, cursor
+      'transition',
+      'cursor',
+      'visibility'
     ]
   }
 ];

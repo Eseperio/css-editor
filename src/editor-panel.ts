@@ -472,6 +472,18 @@ export class CSSEditorPanel {
   }
 
   /**
+   * Task 12: Check if a property group's dependency is met
+   */
+  private isGroupDependencyMet(group: PropertyGroup): boolean {
+    if (!group.dependsOn) return true;
+    
+    const { property, values } = group.dependsOn;
+    const currentValue = this.currentStyles.get(property);
+    
+    return currentValue ? values.includes(currentValue) : false;
+  }
+
+  /**
    * Render common properties section
    */
   private renderCommonProperties(): void {
@@ -490,6 +502,10 @@ export class CSSEditorPanel {
         return false;
       });
       const isCollapsed = this.collapsedGroups.has(group.name);
+      
+      // Task 12: Check if dependency is met
+      const dependencyMet = this.isGroupDependencyMet(group);
+      const dependencyWarning = group.dependsOn && !dependencyMet ? group.dependsOn.warning : '';
       
       // Generate properties HTML for this group
       const propertiesHtml = group.properties.map(prop => {
@@ -532,11 +548,16 @@ export class CSSEditorPanel {
         }
       }).join('');
       
+      // Task 12: Add warning icon to group header if dependency not met
+      const warningIcon = !dependencyMet && group.dependsOn ? 
+        `<span class="dependency-warning" title="${dependencyWarning}">⚠️</span>` : '';
+      
       return `
-        <div class="property-group" data-group="${group.name}">
+        <div class="property-group ${!dependencyMet ? 'dependency-unmet' : ''}" data-group="${group.name}">
           <div class="property-group-header" data-group="${group.name}">
             <div class="property-group-indicator ${hasModifiedProperty ? 'active' : ''}"></div>
             <div class="property-group-title">${translatePropertyGroup(group.name)}</div>
+            ${warningIcon}
             <div class="property-group-toggle ${isCollapsed ? 'collapsed' : ''}">▼</div>
           </div>
           <div class="property-group-content ${isCollapsed ? 'collapsed' : ''}">
