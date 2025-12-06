@@ -14,7 +14,7 @@
   input, and therefore the css rules generated.
 - [x] When user hovers the selector input, highlight the element(s) matching that selector in the page with the blue
   overlay.
-- [ ] Margin items overflow because they are in a subpanel. Fix it.
+- [x] Margin items overflow because they are in a subpanel. Fix it.
 - [ ] Allow to customize the action buttons in panel by changing labels, toggle visibility of each one, also ability to
   hide generated panel
 - [ ] Add some kind of subpanel (may be simply a rectangle without border but slightly dark background) for each

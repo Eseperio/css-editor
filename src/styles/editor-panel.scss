@@ -457,7 +457,7 @@ $panel-height-horizontal: 300px;
         padding: 12px;
         border-top: 1px solid var(--editor-border);
         max-height: 2000px;
-        overflow: hidden;
+        overflow: visible;
         transition: max-height 0.3s ease, padding 0.3s ease;
 
         &.collapsed {
@@ -465,6 +465,7 @@ $panel-height-horizontal: 300px;
           padding-top: 0;
           padding-bottom: 0;
           border-top: none;
+          overflow: hidden;
         }
       }
     }
