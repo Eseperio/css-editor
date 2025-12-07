@@ -21,6 +21,15 @@
       "anchorBottom": "Abajo",
       "language": "Idioma"
     },
+    "selectorConfig": {
+      "children": "Hijos",
+      "descendants": "Todos los descendientes",
+      "all": "Todos",
+      "even": "Pares",
+      "odd": "Impares",
+      "position": "Posición {n}",
+      "onlyPosition": "Solo posición {n}"
+    },
     "propertySelector": {
       "title": "Seleccionar propiedad para añadir",
       "search": "Buscar propiedades...",
@@ -155,6 +164,7 @@
     "align-self": "alineación propia",
     "order": "orden",
     "gap": "espacio",
+    "justify-items": "justificar elementos",
     "grid": "cuadrícula",
     "grid-template-columns": "columnas de plantilla",
     "grid-template-rows": "filas de plantilla",
@@ -171,7 +181,9 @@
     "Border": "Borde",
     "Size": "Tamaño",
     "Typography": "Tipografía",
-    "Layout": "Diseño",
+    "Layout": "Composición",
+    "Flexbox": "Flexbox",
+    "Grid": "Grid",
     "Background": "Fondo",
     "Effects": "Efectos"
   }

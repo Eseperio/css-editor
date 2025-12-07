@@ -26,6 +26,26 @@ export interface CSSEditorOptions {
   stylesUrl?: string;
   fontFamilies?: string[];
   locale?: Locale;
+  activatorSelector?: string; // Task 1: Allow custom activator element selector
+  // Task 7: Customize action buttons
+  buttons?: {
+    save?: { label?: string; visible?: boolean };
+    load?: { label?: string; visible?: boolean };
+    export?: { label?: string; visible?: boolean };
+    clear?: { label?: string; visible?: boolean };
+  };
+  showGeneratedCSS?: boolean; // Task 7: Option to hide generated CSS panel
+}
+
+/**
+ * Interface for selector part
+ */
+interface SelectorPart {
+  selector: string;
+  combinator: '>' | ' '; // > for children, space for descendants
+  positionType: 'all' | 'even' | 'odd' | 'position';
+  positionValue?: number; // Only used when positionType is 'position'
+  siblingCount?: number; // Total number of siblings of this type
 }
 
 /**
@@ -34,6 +54,7 @@ export interface CSSEditorOptions {
 export class CSSEditorPanel {
   private panel: HTMLElement | null = null;
   private currentSelector: string = '';
+  private currentElement: Element | null = null; // Store current element for selector refinement
   private currentStyles: Map<string, string> = new Map();
   private modifiedProperties: Set<string> = new Set(); // Track user-modified properties
   private advancedProperties: Set<string> = new Set(); // Track added advanced properties
@@ -45,6 +66,13 @@ export class CSSEditorPanel {
   private options: CSSEditorOptions;
   private styleElement: HTMLStyleElement;
   private theme: 'light' | 'dark' = 'light'; // Theme state
+  // Task 3: Store all element changes across different elements
+  private allElementChanges: Map<string, { styles: Map<string, string>, modifiedProperties: Set<string> }> = new Map();
+  // Task 4: Selector configuration
+  private selectorParts: SelectorPart[] = [];
+  private selectorConfigExpanded: boolean = false;
+  // Task 5: Hover highlight overlays for selector
+  private highlightOverlays: HTMLElement[] = [];
 
   constructor(options: CSSEditorOptions = {}) {
     this.options = options;
@@ -67,9 +95,19 @@ export class CSSEditorPanel {
    * Show the editor panel for a specific element
    */
   public show(selector: string, element: Element): void {
+    // Task 3: Save current element changes before switching to a new element
+    this.saveCurrentElementChanges();
+    
     this.currentSelector = selector;
+    this.currentElement = element; // Task 4: Store element for selector refinement
     this.loadCurrentStyles(element);
-    this.modifiedProperties.clear(); // Reset modified properties for new element
+    
+    // Task 4: Parse selector into parts
+    this.parseSelectorIntoParts(selector, element);
+    
+    // Task 3: Load previous changes for this element if they exist
+    this.loadPreviousElementChanges(selector);
+    
     this.advancedProperties.clear(); // Reset advanced properties for new element
     
     if (!this.panel) {
@@ -79,6 +117,39 @@ export class CSSEditorPanel {
     this.updatePanel();
     this.panel!.style.display = 'block';
     this.applyAnchorPosition();
+  }
+
+  /**
+   * Load previous element changes from storage
+   * Task 3: Helper method for better readability
+   */
+  private loadPreviousElementChanges(selector: string): void {
+    const previousChanges = this.allElementChanges.get(selector);
+    if (previousChanges) {
+      this.modifiedProperties = new Set(previousChanges.modifiedProperties);
+      // Override computed styles with previous modified styles (after loadCurrentStyles)
+      previousChanges.modifiedProperties.forEach(prop => {
+        const value = previousChanges.styles.get(prop);
+        if (value) {
+          this.currentStyles.set(prop, value);
+        }
+      });
+    } else {
+      this.modifiedProperties.clear(); // Reset modified properties for new element
+    }
+  }
+
+  /**
+   * Save current element changes to storage
+   * Task 3: Helper method to avoid code duplication
+   */
+  private saveCurrentElementChanges(): void {
+    if (this.currentSelector && this.modifiedProperties.size > 0) {
+      this.allElementChanges.set(this.currentSelector, {
+        styles: new Map(this.currentStyles),
+        modifiedProperties: new Set(this.modifiedProperties)
+      });
+    }
   }
 
   /**
@@ -148,9 +219,13 @@ export class CSSEditorPanel {
       <div class="css-editor-content">
         <div class="properties-grid">
           <div class="css-editor-selector">
-            <label>${t('ui.panel.selector')}:</label>
+            <div class="selector-header">
+              <label>${t('ui.panel.selector')}:</label>
+              <button class="selector-config-toggle" title="Configure selector">⚙️</button>
+            </div>
             <input type="text" class="selector-input" readonly />
             <div class="selector-count" aria-live="polite"></div>
+            <div class="selector-config-panel" style="display: none;"></div>
           </div>
           <div class="common-properties-section">
             <div class="common-properties"></div>
@@ -164,15 +239,17 @@ export class CSSEditorPanel {
         </div>
       </div>
       <div class="css-editor-footer">
-        <button class="css-editor-save">${t('ui.panel.saveCSS')}</button>
-        ${this.options.loadEndpoint ? `<button class="css-editor-load">${t('ui.panel.loadCSS')}</button>` : ''}
-        <button class="css-editor-export">${t('ui.panel.exportCSS')}</button>
-        <button class="css-editor-clear">${t('ui.panel.clearChanges')}</button>
+        ${this.isButtonVisible('save') ? `<button class="css-editor-save">${this.getButtonLabel('save')}</button>` : ''}
+        ${this.isButtonVisible('load') && this.options.loadEndpoint ? `<button class="css-editor-load">${this.getButtonLabel('load')}</button>` : ''}
+        ${this.isButtonVisible('export') ? `<button class="css-editor-export">${this.getButtonLabel('export')}</button>` : ''}
+        ${this.isButtonVisible('clear') ? `<button class="css-editor-clear">${this.getButtonLabel('clear')}</button>` : ''}
       </div>
+      ${this.options.showGeneratedCSS !== false ? `
       <div class="css-editor-preview">
         <h4>${t('ui.panel.generatedCSS')}</h4>
         <pre class="css-output"></pre>
       </div>
+      ` : ''}
     `;
 
     this.addPanelStyles();
@@ -269,6 +346,17 @@ export class CSSEditorPanel {
     // Clear button
     const clearBtn = this.panel.querySelector('.css-editor-clear');
     clearBtn?.addEventListener('click', () => this.clearChanges());
+
+    // Task 4: Selector config toggle button
+    const selectorConfigToggle = this.panel.querySelector('.selector-config-toggle');
+    selectorConfigToggle?.addEventListener('click', () => this.toggleSelectorConfig());
+
+    // Task 5: Hover highlight for selector input
+    const selectorInput = this.panel.querySelector('.selector-input') as HTMLInputElement;
+    if (selectorInput) {
+      selectorInput.addEventListener('mouseenter', () => this.highlightMatchingElements(this.currentSelector));
+      selectorInput.addEventListener('mouseleave', () => this.removeHighlights());
+    }
   }
 
   /**
@@ -384,6 +472,18 @@ export class CSSEditorPanel {
   }
 
   /**
+   * Task 12: Check if a property group's dependency is met
+   */
+  private isGroupDependencyMet(group: PropertyGroup): boolean {
+    if (!group.dependsOn) return true;
+    
+    const { property, values } = group.dependsOn;
+    const currentValue = this.currentStyles.get(property);
+    
+    return currentValue ? values.includes(currentValue) : false;
+  }
+
+  /**
    * Render common properties section
    */
   private renderCommonProperties(): void {
@@ -402,6 +502,10 @@ export class CSSEditorPanel {
         return false;
       });
       const isCollapsed = this.collapsedGroups.has(group.name);
+      
+      // Task 12: Check if dependency is met
+      const dependencyMet = this.isGroupDependencyMet(group);
+      const dependencyWarning = group.dependsOn && !dependencyMet ? group.dependsOn.warning : '';
       
       // Generate properties HTML for this group
       const propertiesHtml = group.properties.map(prop => {
@@ -444,11 +548,16 @@ export class CSSEditorPanel {
         }
       }).join('');
       
+      // Task 12: Add warning icon to group header if dependency not met
+      const warningIcon = !dependencyMet && group.dependsOn ? 
+        `<span class="dependency-warning" title="${dependencyWarning}">⚠️</span>` : '';
+      
       return `
-        <div class="property-group" data-group="${group.name}">
+        <div class="property-group ${!dependencyMet ? 'dependency-unmet' : ''}" data-group="${group.name}">
           <div class="property-group-header" data-group="${group.name}">
             <div class="property-group-indicator ${hasModifiedProperty ? 'active' : ''}"></div>
             <div class="property-group-title">${translatePropertyGroup(group.name)}</div>
+            ${warningIcon}
             <div class="property-group-toggle ${isCollapsed ? 'collapsed' : ''}">▼</div>
           </div>
           <div class="property-group-content ${isCollapsed ? 'collapsed' : ''}">
@@ -668,9 +777,12 @@ export class CSSEditorPanel {
       const isCustomValue = !!trimmedValue && !hasSuggestion;
       const translatedProp = translateProperty(prop);
       
+      // Task 8: Wrap each advanced property in a subpanel
+      let propertyContent = '';
+      
       // If property has predefined suggestions, use dropdown
       if (suggestions.length > 0) {
-        return `
+        propertyContent = `
           <div class="css-property active" data-property="${prop}">
             <label>${translatedProp}</label>
             <select data-property="${prop}">
@@ -685,7 +797,7 @@ export class CSSEditorPanel {
           </div>
         `;
       } else if (inputType === 'color') {
-        return `
+        propertyContent = `
           <div class="css-property active" data-property="${prop}">
             <label>${translatedProp}</label>
             ${createColorInput(prop, currentValue)}
@@ -693,7 +805,7 @@ export class CSSEditorPanel {
           </div>
         `;
       } else if (inputType === 'size') {
-        return `
+        propertyContent = `
           <div class="css-property active" data-property="${prop}">
             <label>${translatedProp}</label>
             ${createSizeInput(prop, currentValue)}
@@ -701,7 +813,7 @@ export class CSSEditorPanel {
           </div>
         `;
       } else if (inputType === 'number') {
-        return `
+        propertyContent = `
           <div class="css-property active" data-property="${prop}">
             <label>${translatedProp}</label>
             ${createPercentageInput(prop, currentValue)}
@@ -709,7 +821,7 @@ export class CSSEditorPanel {
           </div>
         `;
       } else {
-        return `
+        propertyContent = `
           <div class="css-property active" data-property="${prop}">
             <label>${translatedProp}</label>
             <input type="text" data-property="${prop}" value="${currentValue}" placeholder="${t('ui.inputs.enterValue')}" />
@@ -717,6 +829,9 @@ export class CSSEditorPanel {
           </div>
         `;
       }
+      
+      // Task 8: Wrap in subpanel div
+      return `<div class="advanced-property-subpanel">${propertyContent}</div>`;
     }).join('');
 
     this.attachPropertyListeners(container);
@@ -1187,21 +1302,34 @@ export class CSSEditorPanel {
 
   /**
    * Generate CSS from current styles (only modified properties)
+   * Task 3: Include all element changes, not just the current element
    */
   private generateCSS(): string {
-    if (this.modifiedProperties.size === 0) {
+    // Task 3: Save current element changes before generating CSS
+    this.saveCurrentElementChanges();
+    
+    // Generate CSS for all elements with changes
+    if (this.allElementChanges.size === 0) {
       return '';
     }
-
-    const properties = Array.from(this.modifiedProperties)
-      .map(prop => {
-        const value = this.currentStyles.get(prop);
-        return value ? `  ${prop}: ${value};` : null;
-      })
-      .filter(line => line !== null)
-      .join('\n');
-
-    return properties ? `${this.currentSelector} {\n${properties}\n}` : '';
+    
+    const cssBlocks: string[] = [];
+    
+    this.allElementChanges.forEach((elementData, selector) => {
+      const properties = Array.from(elementData.modifiedProperties)
+        .map(prop => {
+          const value = elementData.styles.get(prop);
+          return value ? `  ${prop}: ${value};` : null;
+        })
+        .filter(line => line !== null)
+        .join('\n');
+      
+      if (properties) {
+        cssBlocks.push(`${selector} {\n${properties}\n}`);
+      }
+    });
+    
+    return cssBlocks.join('\n\n');
   }
 
   /**
@@ -1359,12 +1487,14 @@ export class CSSEditorPanel {
 
   /**
    * Clear all changes
+   * Task 3: Also clear all element changes stored in memory
    */
   private clearChanges(): void {
     if (confirm(t('ui.messages.confirmClear'))) {
       this.currentStyles.clear();
       this.modifiedProperties.clear();
       this.advancedProperties.clear();
+      this.allElementChanges.clear(); // Clear all stored element changes
       this.styleElement.textContent = '';
       
       // Re-render the properties
@@ -1382,7 +1512,411 @@ export class CSSEditorPanel {
   }
 
   /**
+   * Task 4: Parse selector into parts for configuration
+   */
+  private parseSelectorIntoParts(selector: string, element: Element): void {
+    this.selectorParts = [];
+    
+    // Split by > or space (but preserve them) - handle spaces around >
+    const parts = selector.split(/(\s*>\s*|\s+)/);
+    let currentElement = element;
+    
+    // Process in reverse (from element to root)
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const part = parts[i].trim();
+      if (!part || part === '>' || part === ' ') continue;
+      
+      // Determine combinator (default to space for last element)
+      let combinator: '>' | ' ' = ' ';
+      if (i > 0 && parts[i - 1].includes('>')) {
+        combinator = '>';
+      }
+      
+      // Extract position info from selector
+      let positionType: 'all' | 'even' | 'odd' | 'position' = 'all';
+      let positionValue: number | undefined;
+      let cleanSelector = part;
+      
+      // Check for :nth-of-type or :nth-child (including even/odd)
+      const nthMatch = part.match(/:nth-of-type\((\d+|even|odd)\)|:nth-child\((\d+|even|odd)\)/);
+      if (nthMatch) {
+        const value = nthMatch[1] || nthMatch[2];
+        if (value === 'even') {
+          positionType = 'even';
+        } else if (value === 'odd') {
+          positionType = 'odd';
+        } else {
+          positionType = 'position';
+          positionValue = parseInt(value);
+        }
+        cleanSelector = part.replace(/:nth-of-type\((\d+|even|odd)\)|:nth-child\((\d+|even|odd)\)/, '');
+      }
+      
+      // Count siblings if we have the element
+      let siblingCount = 0;
+      if (currentElement && currentElement.parentElement) {
+        // Extract tag name, handling selectors that start with class or ID
+        let tagName = cleanSelector.split(/[.#:]/)[0];
+        if (!tagName || tagName === '') {
+          // If selector starts with . or #, use the element's tag name
+          tagName = currentElement.tagName.toLowerCase();
+        }
+        const siblings = Array.from(currentElement.parentElement.children);
+        siblingCount = siblings.filter(el => el.tagName.toLowerCase() === tagName).length;
+      }
+      
+      this.selectorParts.unshift({
+        selector: cleanSelector,
+        combinator: combinator,
+        positionType: positionType,
+        positionValue: positionValue,
+        siblingCount: siblingCount
+      });
+      
+      // Move up the tree
+      if (currentElement) {
+        currentElement = currentElement.parentElement as Element;
+      }
+    }
+  }
+
+  /**
+   * Task 4: Toggle selector configuration panel
+   */
+  private toggleSelectorConfig(): void {
+    this.selectorConfigExpanded = !this.selectorConfigExpanded;
+    const configPanel = this.panel?.querySelector('.selector-config-panel') as HTMLElement;
+    
+    if (configPanel) {
+      if (this.selectorConfigExpanded) {
+        configPanel.style.display = 'block';
+        this.renderSelectorConfig();
+      } else {
+        configPanel.style.display = 'none';
+      }
+    }
+  }
+
+  /**
+   * Task 4: Render selector configuration UI
+   */
+  private renderSelectorConfig(): void {
+    const configPanel = this.panel?.querySelector('.selector-config-panel') as HTMLElement;
+    if (!configPanel) return;
+    
+    let html = '<div class="selector-config-content">';
+    
+    this.selectorParts.forEach((part, index) => {
+      const partId = `selector-part-${index}`;
+      
+      // Create position options
+      const positionOptions = ['all', 'even', 'odd'];
+      if (part.siblingCount) {
+        for (let i = 1; i <= part.siblingCount; i++) {
+          positionOptions.push(`position-${i}`);
+        }
+      }
+      
+      html += `
+        <div class="selector-part-container">
+          <div class="selector-part" data-index="${index}">
+            <div class="selector-part-label">${part.selector}</div>
+            <select class="selector-position-type" data-index="${index}">
+              ${positionOptions.map(opt => {
+                const isSelected = (opt === 'all' && part.positionType === 'all') ||
+                                   (opt === 'even' && part.positionType === 'even') ||
+                                   (opt === 'odd' && part.positionType === 'odd') ||
+                                   (opt.startsWith('position-') && part.positionType === 'position' && 
+                                    parseInt(opt.replace('position-', '')) === part.positionValue);
+                
+                const label = opt === 'all' ? t('ui.selectorConfig.all') :
+                              opt === 'even' ? t('ui.selectorConfig.even') :
+                              opt === 'odd' ? t('ui.selectorConfig.odd') :
+                              t('ui.selectorConfig.onlyPosition', { n: opt.replace('position-', '') });
+                
+                return `<option value="${opt}" ${isSelected ? 'selected' : ''}>${label}</option>`;
+              }).join('')}
+            </select>
+          </div>
+      `;
+      
+      // Add combinator control between parts (except for the last one)
+      if (index < this.selectorParts.length - 1) {
+        html += `
+          <div class="selector-combinator">
+            <div class="combinator-line"></div>
+            <select class="selector-combinator-type" data-index="${index}">
+              <option value=">" ${part.combinator === '>' ? 'selected' : ''}>${t('ui.selectorConfig.children')}</option>
+              <option value=" " ${part.combinator === ' ' ? 'selected' : ''}>${t('ui.selectorConfig.descendants')}</option>
+            </select>
+          </div>
+        `;
+      }
+      
+      html += '</div>';
+    });
+    
+    html += '</div>';
+    configPanel.innerHTML = html;
+    
+    // Attach event listeners
+    this.attachSelectorConfigListeners();
+  }
+
+  /**
+   * Task 4: Attach event listeners to selector config controls
+   */
+  private attachSelectorConfigListeners(): void {
+    const configPanel = this.panel?.querySelector('.selector-config-panel');
+    if (!configPanel) return;
+    
+    // Position type selects
+    const positionSelects = configPanel.querySelectorAll('.selector-position-type');
+    positionSelects.forEach(select => {
+      select.addEventListener('change', (e) => {
+        const target = e.target as HTMLSelectElement;
+        const index = parseInt(target.dataset.index || '0');
+        this.updateSelectorPartPosition(index, target.value);
+      });
+    });
+    
+    // Combinator selects
+    const combinatorSelects = configPanel.querySelectorAll('.selector-combinator-type');
+    combinatorSelects.forEach(select => {
+      select.addEventListener('change', (e) => {
+        const target = e.target as HTMLSelectElement;
+        const index = parseInt(target.dataset.index || '0');
+        this.updateSelectorPartCombinator(index, target.value as '>' | ' ');
+      });
+    });
+
+    // Task 5: Hover highlight for selector parts
+    const selectorParts = configPanel.querySelectorAll('.selector-part');
+    selectorParts.forEach(part => {
+      part.addEventListener('mouseenter', (e) => {
+        const target = e.currentTarget as HTMLElement;
+        const index = parseInt(target.dataset.index || '0');
+        this.highlightSelectorUpToIndex(index);
+      });
+      part.addEventListener('mouseleave', () => {
+        this.removeHighlights();
+      });
+    });
+  }
+
+  /**
+   * Task 4: Update selector part position
+   */
+  private updateSelectorPartPosition(index: number, value: string): void {
+    const part = this.selectorParts[index];
+    if (!part) return;
+    
+    if (value === 'all') {
+      part.positionType = 'all';
+      part.positionValue = undefined;
+    } else if (value === 'even') {
+      part.positionType = 'even';
+      part.positionValue = undefined;
+    } else if (value === 'odd') {
+      part.positionType = 'odd';
+      part.positionValue = undefined;
+    } else if (value.startsWith('position-')) {
+      part.positionType = 'position';
+      part.positionValue = parseInt(value.replace('position-', ''));
+    }
+    
+    this.rebuildSelector();
+  }
+
+  /**
+   * Task 4: Update selector part combinator
+   */
+  private updateSelectorPartCombinator(index: number, value: '>' | ' '): void {
+    const part = this.selectorParts[index];
+    if (!part) return;
+    
+    part.combinator = value;
+    this.rebuildSelector();
+  }
+
+  /**
+   * Task 4: Rebuild selector from parts
+   */
+  private rebuildSelector(): void {
+    // Store old selector before updating
+    const oldSelector = this.currentSelector;
+    
+    let selector = '';
+    
+    this.selectorParts.forEach((part, index) => {
+      // Add the selector part
+      selector += part.selector;
+      
+      // Add position specifier
+      if (part.positionType === 'position' && part.positionValue) {
+        selector += `:nth-of-type(${part.positionValue})`;
+      } else if (part.positionType === 'even') {
+        selector += ':nth-of-type(even)';
+      } else if (part.positionType === 'odd') {
+        selector += ':nth-of-type(odd)';
+      }
+      
+      // Add combinator (except for last part)
+      if (index < this.selectorParts.length - 1) {
+        selector += part.combinator === '>' ? ' > ' : ' ';
+      }
+    });
+    
+    this.currentSelector = selector;
+    
+    // Update the selector input
+    const selectorInput = this.panel?.querySelector('.selector-input') as HTMLInputElement;
+    if (selectorInput) {
+      selectorInput.value = selector;
+    }
+    
+    // Update selector count
+    this.updateSelectorCount();
+    
+    // Update all element changes with new selector
+    if (this.currentElement && oldSelector !== selector) {
+      const oldChanges = this.allElementChanges.get(oldSelector);
+      if (oldChanges) {
+        // Remove old entry
+        this.allElementChanges.delete(oldSelector);
+        // Add with new selector
+        this.allElementChanges.set(selector, oldChanges);
+      }
+    }
+    
+    // Apply styles with new selector
+    this.applyStyles();
+  }
+
+  /**
+   * Task 4: Update selector count display
+   */
+  private updateSelectorCount(): void {
+    const selectorCount = this.panel?.querySelector('.selector-count') as HTMLElement | null;
+    if (selectorCount) {
+      try {
+        const matches = document.querySelectorAll(this.currentSelector);
+        const count = matches.length;
+        
+        if (count > 0) {
+          selectorCount.textContent = t('ui.panel.selectorMatchCount', { count: count.toString() });
+          selectorCount.style.display = 'block';
+        } else {
+          selectorCount.textContent = '';
+          selectorCount.style.display = 'none';
+        }
+      } catch (e) {
+        selectorCount.textContent = this.currentSelector ? t('ui.panel.selectorInvalid') : '';
+        selectorCount.style.display = this.currentSelector ? 'block' : 'none';
+      }
+    }
+  }
+
+  /**
+   * Task 5: Highlight elements matching a selector
+   */
+  private highlightMatchingElements(selector: string): void {
+    if (!selector) return;
+    
+    try {
+      const elements = document.querySelectorAll(selector);
+      
+      elements.forEach(element => {
+        const rect = element.getBoundingClientRect();
+        const overlay = document.createElement('div');
+        overlay.className = 'css-editor-selector-highlight';
+        overlay.style.cssText = `
+          position: fixed;
+          top: ${rect.top}px;
+          left: ${rect.left}px;
+          width: ${rect.width}px;
+          height: ${rect.height}px;
+          background: rgba(255, 235, 59, 0.3);
+          border: 2px solid rgba(255, 193, 7, 0.8);
+          pointer-events: none;
+          z-index: 9998;
+          transition: all 0.2s ease;
+        `;
+        document.body.appendChild(overlay);
+        this.highlightOverlays.push(overlay);
+      });
+    } catch (e) {
+      // Invalid selector, do nothing
+    }
+  }
+
+  /**
+   * Task 5: Highlight elements matching selector up to a specific part
+   */
+  private highlightSelectorUpToIndex(index: number): void {
+    // Build selector up to the specified index
+    let selector = '';
+    
+    for (let i = 0; i <= index; i++) {
+      const part = this.selectorParts[i];
+      if (!part) continue;
+      
+      selector += part.selector;
+      
+      // Add position specifier
+      if (part.positionType === 'position' && part.positionValue) {
+        selector += `:nth-of-type(${part.positionValue})`;
+      } else if (part.positionType === 'even') {
+        selector += ':nth-of-type(even)';
+      } else if (part.positionType === 'odd') {
+        selector += ':nth-of-type(odd)';
+      }
+      
+      // Add combinator (except for last part)
+      if (i < index) {
+        selector += part.combinator === '>' ? ' > ' : ' ';
+      }
+    }
+    
+    this.highlightMatchingElements(selector);
+  }
+
+  /**
+   * Task 5: Remove all highlight overlays
+   */
+  private removeHighlights(): void {
+    this.highlightOverlays.forEach(overlay => {
+      overlay.remove();
+    });
+    this.highlightOverlays = [];
+  }
+
+  /**
+   * Task 7: Check if a button should be visible
+   */
+  private isButtonVisible(button: 'save' | 'load' | 'export' | 'clear'): boolean {
+    return this.options.buttons?.[button]?.visible !== false;
+  }
+
+  /**
+   * Task 7: Get custom label for a button or default
+   */
+  private getButtonLabel(button: 'save' | 'load' | 'export' | 'clear'): string {
+    const customLabel = this.options.buttons?.[button]?.label;
+    if (customLabel) return customLabel;
+    
+    // Default labels
+    switch (button) {
+      case 'save': return t('ui.panel.saveCSS');
+      case 'load': return t('ui.panel.loadCSS');
+      case 'export': return t('ui.panel.exportCSS');
+      case 'clear': return t('ui.panel.clearChanges');
+    }
+  }
+
+  /**
    * Destroy the panel
+   * Task 3: Clean up all element changes to prevent memory leaks
    */
   public destroy(): void {
     if (this.panel) {
@@ -1392,5 +1926,9 @@ export class CSSEditorPanel {
     if (this.styleElement) {
       this.styleElement.remove();
     }
+    // Clear all stored element changes to prevent memory leaks
+    this.allElementChanges.clear();
+    // Task 5: Remove any remaining highlights
+    this.removeHighlights();
   }
 }
