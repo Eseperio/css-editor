@@ -47,6 +47,17 @@
       "allSidesAdded": "All sides have been configured!",
       "all": "all"
     },
+    "shadow": {
+      "addShadow": "Add shadow",
+      "removeShadow": "Remove shadow",
+      "shadow": "shadow",
+      "x": "X offset",
+      "y": "Y offset",
+      "blur": "blur",
+      "spread": "spread",
+      "color": "color",
+      "inset": "inset"
+    },
     "messages": {
       "cssSaved": "CSS saved successfully!",
       "cssLoaded": "CSS loaded successfully!",
@@ -198,6 +209,7 @@
   "propertyGroups": {
     "Spacing": "Spacing",
     "Border": "Border",
+    "Shadow": "Shadow",
     "Size": "Size",
     "Typography": "Typography",
     "Layout": "Layout",

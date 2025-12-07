@@ -38,6 +38,20 @@ export interface CompoundProperty {
   }[];
 }
 
+/**
+ * Multi-value property definition - properties that can have multiple values
+ * e.g., box-shadow can have multiple shadows
+ */
+export interface MultiValueProperty {
+  property: string;          // The property name (e.g., 'box-shadow')
+  components: {              // Components that make up each value
+    name: string;            // Component name (e.g., 'x', 'y', 'blur', 'spread')
+    type: 'size' | 'color' | 'select';  // Input type
+    options?: string[];      // Options for select type
+    defaultValue?: string;   // Default value
+  }[];
+}
+
 export const SPACING_PROPERTIES: SpacingProperty[] = [
   {
     general: 'margin',
@@ -85,6 +99,23 @@ export const COMPOUND_PROPERTIES: CompoundProperty[] = [
   }
 ];
 
+/**
+ * Multi-value properties that can have multiple instances
+ */
+export const MULTI_VALUE_PROPERTIES: MultiValueProperty[] = [
+  {
+    property: 'box-shadow',
+    components: [
+      { name: 'x', type: 'size', defaultValue: '0px' },
+      { name: 'y', type: 'size', defaultValue: '0px' },
+      { name: 'blur', type: 'size', defaultValue: '0px' },
+      { name: 'spread', type: 'size', defaultValue: '0px' },
+      { name: 'color', type: 'color', defaultValue: 'rgba(0, 0, 0, 0.5)' },
+      { name: 'inset', type: 'select', options: ['', 'inset'], defaultValue: '' }
+    ]
+  }
+];
+
 export const PROPERTY_GROUPS: PropertyGroup[] = [
   {
     name: 'Spacing',
@@ -97,7 +128,12 @@ export const PROPERTY_GROUPS: PropertyGroup[] = [
     name: 'Border',
     properties: [
       'border',
-      'border-radius',
+      'border-radius'
+    ]
+  },
+  {
+    name: 'Shadow',
+    properties: [
       'box-shadow'
     ]
   },

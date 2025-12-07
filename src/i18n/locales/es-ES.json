@@ -47,6 +47,17 @@
       "allSidesAdded": "¡Todos los lados han sido configurados!",
       "all": "todos"
     },
+    "shadow": {
+      "addShadow": "Añadir sombra",
+      "removeShadow": "Eliminar sombra",
+      "shadow": "sombra",
+      "x": "desplazamiento X",
+      "y": "desplazamiento Y",
+      "blur": "desenfoque",
+      "spread": "expansión",
+      "color": "color",
+      "inset": "interior"
+    },
     "messages": {
       "cssSaved": "¡CSS guardado correctamente!",
       "cssLoaded": "¡CSS cargado correctamente!",
@@ -198,6 +209,7 @@
   "propertyGroups": {
     "Spacing": "Espaciado",
     "Border": "Borde",
+    "Shadow": "Sombra",
     "Size": "Tamaño",
     "Typography": "Tipografía",
     "Layout": "Composición",
