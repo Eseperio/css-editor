@@ -308,7 +308,7 @@ $panel-height-horizontal: 300px;
       padding: 10px;
       background: transparent;
       border: 1px dashed var(--editor-border);
-      color: white;
+      color: var(--editor-text-subtle);
       border-radius: var(--editor-radius-sm);
       cursor: pointer;
       font-size: 13px;
