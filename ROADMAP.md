@@ -27,3 +27,9 @@
 - [x] There are a set of properties that are dependant on others, like align-items that only makes sense if display is
   flex or grid. We should hide or disable those properties when they don't make sense. Also those properties must be in
   same panel. So whenever a user changes display to flex, the flex properties appear in the same panel.
+- [ ] Add ability to define different values for different breakpoints (responsive design). For example, margin can be
+  defined as 10px for desktop, 5px for tablet and 2px for mobile. This can be done by adding a small icon next to the
+  property label representing a screen (desktop, tablet, mobile). Once clicked, a small popup appears allowing to set
+  different values for each breakpoint. The generated css must include media queries for those breakpoints.
+- [ ] Add ability to predefine a set of breakpoints, with names and widths, so user can choose between them when
+  defining responsive properties.
