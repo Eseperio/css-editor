@@ -730,10 +730,10 @@ export class CSSEditorPanel {
   }
 
   /**
-   * Render properties for a side, showing all general properties that have side-specific versions
+   * Render side-specific sub-properties for a compound property side
    */
   private renderSideProperties(compoundProp: CompoundProperty, side: { name: string; property: string; subProperties: string[] }): string[] {
-    // Only render properties that actually have side-specific versions
+    // Render side-specific properties (e.g., border-left-width, border-left-style, border-left-color)
     return side.subProperties.map(sideProp => 
       this.renderPropertyInput(sideProp, false)
     );
