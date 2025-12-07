@@ -49,6 +49,18 @@ interface SelectorPart {
 }
 
 /**
+ * Interface for box-shadow configuration
+ */
+interface ShadowConfig {
+  x: string;
+  y: string;
+  blur: string;
+  spread: string;
+  color: string;
+  inset: string;
+}
+
+/**
  * CSS Editor Panel class
  */
 export class CSSEditorPanel {
@@ -63,7 +75,7 @@ export class CSSEditorPanel {
   ); // Track collapsed property groups, default to collapsed
   private expandedSpacing: Map<string, boolean> = new Map(); // Track expanded spacing properties (margin/padding)
   private expandedCompound: Map<string, Set<string>> = new Map(); // Track expanded compound properties (border) with active sides
-  private multiValueShadows: Map<string, any[]> = new Map(); // Track multi-value properties like box-shadow
+  private multiValueShadows: Map<string, ShadowConfig[]> = new Map(); // Track multi-value properties like box-shadow
   private anchorPosition: 'right' | 'left' | 'top' | 'bottom' = 'right';
   private options: CSSEditorOptions;
   private styleElement: HTMLStyleElement;
@@ -846,34 +858,40 @@ export class CSSEditorPanel {
   /**
    * Parse box-shadow CSS value into individual shadows
    */
-  private parseBoxShadow(value: string): any[] {
+  private parseBoxShadow(value: string): ShadowConfig[] {
     if (!value || value === 'none') return [];
     
-    // Simple parser for box-shadow (this is a simplified version)
-    // In production, you'd want a more robust parser
-    const shadows: any[] = [];
+    // Parse box-shadow values into structured shadow objects
+    // Note: This is a simplified parser that handles common cases.
+    // Complex cases with calc() or variables may need additional handling.
+    const shadows: ShadowConfig[] = [];
     const parts = value.split(/,(?![^(]*\))/); // Split by comma, but not inside parentheses
     
     parts.forEach(part => {
       part = part.trim();
-      const shadow: any = {};
+      const shadow: ShadowConfig = {
+        x: '0px',
+        y: '0px',
+        blur: '0px',
+        spread: '0px',
+        color: 'rgba(0, 0, 0, 0.5)',
+        inset: ''
+      };
       
       // Check for inset
       if (part.includes('inset')) {
         shadow.inset = 'inset';
         part = part.replace('inset', '').trim();
-      } else {
-        shadow.inset = '';
       }
       
       // Parse remaining parts (x y blur spread color)
       const tokens = part.match(/([+-]?[\d.]+[a-z%]*|rgba?\([^)]+\)|#[0-9a-f]+)/gi) || [];
       
-      shadow.x = tokens[0] || '0px';
-      shadow.y = tokens[1] || '0px';
-      shadow.blur = tokens[2] || '0px';
-      shadow.spread = tokens[3] || '0px';
-      shadow.color = tokens[4] || 'rgba(0, 0, 0, 0.5)';
+      if (tokens.length > 0 && tokens[0]) shadow.x = tokens[0];
+      if (tokens.length > 1 && tokens[1]) shadow.y = tokens[1];
+      if (tokens.length > 2 && tokens[2]) shadow.blur = tokens[2];
+      if (tokens.length > 3 && tokens[3]) shadow.spread = tokens[3];
+      if (tokens.length > 4 && tokens[4]) shadow.color = tokens[4];
       
       shadows.push(shadow);
     });
@@ -884,10 +902,19 @@ export class CSSEditorPanel {
   /**
    * Create default shadow object
    */
-  private createDefaultShadow(multiValueProp: MultiValueProperty): any {
-    const shadow: any = {};
+  private createDefaultShadow(multiValueProp: MultiValueProperty): ShadowConfig {
+    const shadow: ShadowConfig = {
+      x: '0px',
+      y: '0px',
+      blur: '0px',
+      spread: '0px',
+      color: 'rgba(0, 0, 0, 0.5)',
+      inset: ''
+    };
     multiValueProp.components.forEach(component => {
-      shadow[component.name] = component.defaultValue || '';
+      if (component.defaultValue) {
+        shadow[component.name as keyof ShadowConfig] = component.defaultValue;
+      }
     });
     return shadow;
   }
@@ -1186,7 +1213,6 @@ export class CSSEditorPanel {
    */
   private handleShadowComponentChange(e: Event): void {
     const input = e.target as HTMLInputElement | HTMLSelectElement;
-    const propertyAttr = input.getAttribute('data-property');
     
     // Extract property, index, and component from the input name
     const match = input.name?.match(/^(.+)-(\d+)-(.+)$/);
@@ -1198,7 +1224,11 @@ export class CSSEditorPanel {
     const shadows = this.multiValueShadows.get(property) || [];
     if (!shadows[index]) return;
 
-    shadows[index][component] = input.value;
+    // Type-safe property assignment
+    const key = component as keyof ShadowConfig;
+    if (key in shadows[index]) {
+      shadows[index][key] = input.value;
+    }
     this.multiValueShadows.set(property, shadows);
 
     this.updateBoxShadowProperty(property);
