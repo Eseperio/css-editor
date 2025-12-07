@@ -1066,6 +1066,27 @@ $panel-height-horizontal: 300px;
     border-radius: var(--editor-radius-xs);
     padding: 12px;
     margin-bottom: 12px;
+
+    .compound-property-header {
+      margin-bottom: 12px;
+      
+      .compound-label {
+        display: inline-block;
+        padding: 4px 12px;
+        background: var(--editor-accent);
+        color: white;
+        font-weight: 600;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-radius: var(--editor-radius-xs);
+        box-shadow: var(--editor-shadow-sm);
+        
+        &.disabled {
+          background: var(--editor-text-subtle);
+        }
+      }
+    }
   }
 
   .compound-add-side-container {

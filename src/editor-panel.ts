@@ -676,10 +676,10 @@ export class CSSEditorPanel {
     
     // Render general configuration section
     html += `
-      <div class="compound-property-header">
-        <label class="compound-label ${isModified ? 'active' : 'disabled'}">${t('ui.compound.all')}</label>
-      </div>
       <div class="compound-property-general">
+        <div class="compound-property-header">
+          <label class="compound-label ${isModified ? 'active' : 'disabled'}">${t('ui.compound.all')}</label>
+        </div>
         ${compoundProp.subProperties.map(subProp => 
           this.renderPropertyInput(subProp, false)
         ).join('')}
