@@ -40,6 +40,12 @@
       "expandToSides": "Expandir a lados individuales",
       "collapseToGeneral": "Contraer a {property}"
     },
+    "compound": {
+      "addSideConfig": "Añadir configuración específica para lado",
+      "removeSide": "Eliminar configuración de lado",
+      "selectSide": "Seleccionar lado",
+      "allSidesAdded": "¡Todos los lados han sido configurados!"
+    },
     "messages": {
       "cssSaved": "¡CSS guardado correctamente!",
       "cssLoaded": "¡CSS cargado correctamente!",

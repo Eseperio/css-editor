@@ -24,6 +24,20 @@ export interface SpacingProperty {
   sides: string[];
 }
 
+/**
+ * Compound property definition - properties that have multiple sub-properties
+ * e.g., border has width, style, and color
+ */
+export interface CompoundProperty {
+  general: string;           // The general property name (e.g., 'border')
+  subProperties: string[];   // Sub-properties for the general case (e.g., ['border-width', 'border-style', 'border-color'])
+  sides: {                   // Side-specific configurations
+    name: string;            // Side name (e.g., 'top', 'right', 'bottom', 'left')
+    property: string;        // The compound property for this side (e.g., 'border-top')
+    subProperties: string[]; // Sub-properties for this side (e.g., ['border-top-width', 'border-top-style', 'border-top-color'])
+  }[];
+}
+
 export const SPACING_PROPERTIES: SpacingProperty[] = [
   {
     general: 'margin',
@@ -32,11 +46,38 @@ export const SPACING_PROPERTIES: SpacingProperty[] = [
   {
     general: 'padding',
     sides: ['padding-top', 'padding-right', 'padding-bottom', 'padding-left']
-  },
-  // Task 10: Add border properties per side
+  }
+];
+
+/**
+ * Compound properties that need special handling for side-specific configurations
+ */
+export const COMPOUND_PROPERTIES: CompoundProperty[] = [
   {
     general: 'border',
-    sides: ['border-top', 'border-right', 'border-bottom', 'border-left']
+    subProperties: ['border-width', 'border-style', 'border-color'],
+    sides: [
+      {
+        name: 'top',
+        property: 'border-top',
+        subProperties: ['border-top-width', 'border-top-style', 'border-top-color']
+      },
+      {
+        name: 'right',
+        property: 'border-right',
+        subProperties: ['border-right-width', 'border-right-style', 'border-right-color']
+      },
+      {
+        name: 'bottom',
+        property: 'border-bottom',
+        subProperties: ['border-bottom-width', 'border-bottom-style', 'border-bottom-color']
+      },
+      {
+        name: 'left',
+        property: 'border-left',
+        subProperties: ['border-left-width', 'border-left-style', 'border-left-color']
+      }
+    ]
   }
 ];
 
@@ -52,11 +93,8 @@ export const PROPERTY_GROUPS: PropertyGroup[] = [
     name: 'Border',
     properties: [
       'border',
-      'border-width',
-      'border-style',
-      'border-color',
       'border-radius',
-      'box-shadow'  // Task 11: Added box-shadow to Border group
+      'box-shadow'
     ]
   },
   {
@@ -265,6 +303,10 @@ export function getPropertyValues(property: string): string[] {
     'float': ['none', 'left', 'right'],
     'clear': ['none', 'left', 'right', 'both'],
     'border-style': ['none', 'solid', 'dashed', 'dotted', 'double', 'groove', 'ridge', 'inset', 'outset'],
+    'border-top-style': ['none', 'solid', 'dashed', 'dotted', 'double', 'groove', 'ridge', 'inset', 'outset'],
+    'border-right-style': ['none', 'solid', 'dashed', 'dotted', 'double', 'groove', 'ridge', 'inset', 'outset'],
+    'border-bottom-style': ['none', 'solid', 'dashed', 'dotted', 'double', 'groove', 'ridge', 'inset', 'outset'],
+    'border-left-style': ['none', 'solid', 'dashed', 'dotted', 'double', 'groove', 'ridge', 'inset', 'outset'],
     'background-repeat': ['repeat', 'repeat-x', 'repeat-y', 'no-repeat', 'space', 'round'],
     'background-size': ['auto', 'cover', 'contain'],
     'background-attachment': ['scroll', 'fixed', 'local'],

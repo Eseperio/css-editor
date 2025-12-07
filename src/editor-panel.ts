@@ -1,4 +1,4 @@
-import { CSS_PROPERTIES, COMMON_PROPERTIES, PROPERTY_GROUPS, PropertyGroup, getPropertyValues, getAdvancedProperties, SPACING_PROPERTIES } from './css-properties';
+import { CSS_PROPERTIES, COMMON_PROPERTIES, PROPERTY_GROUPS, PropertyGroup, getPropertyValues, getAdvancedProperties, SPACING_PROPERTIES, COMPOUND_PROPERTIES, CompoundProperty } from './css-properties';
 import { 
   getPropertyInputType, 
   createColorInput, 
@@ -62,6 +62,7 @@ export class CSSEditorPanel {
     PROPERTY_GROUPS.map(group => group.name)
   ); // Track collapsed property groups, default to collapsed
   private expandedSpacing: Map<string, boolean> = new Map(); // Track expanded spacing properties (margin/padding)
+  private expandedCompound: Map<string, Set<string>> = new Map(); // Track expanded compound properties (border) with active sides
   private anchorPosition: 'right' | 'left' | 'top' | 'bottom' = 'right';
   private options: CSSEditorOptions;
   private styleElement: HTMLStyleElement;
@@ -509,6 +510,12 @@ export class CSSEditorPanel {
       
       // Generate properties HTML for this group
       const propertiesHtml = group.properties.map(prop => {
+        // Check if this is a compound property (border)
+        const compoundProp = COMPOUND_PROPERTIES.find(cp => cp.general === prop);
+        if (compoundProp) {
+          return this.renderCompoundProperty(compoundProp);
+        }
+        
         // Check if this is a spacing property (margin/padding)
         const spacingProp = SPACING_PROPERTIES.find(sp => sp.general === prop);
         const isExpanded = this.expandedSpacing.get(prop) || false;
@@ -570,6 +577,7 @@ export class CSSEditorPanel {
     this.attachPropertyListeners(container);
     this.attachGroupToggleListeners();
     this.attachSpacingToggleListeners();
+    this.attachCompoundPropertyListeners();
   }
 
   /**
@@ -650,6 +658,80 @@ export class CSSEditorPanel {
   }
 
   /**
+   * Render a compound property (like border) with general configuration and side-specific options
+   */
+  private renderCompoundProperty(compoundProp: CompoundProperty): string {
+    const activeSides = this.expandedCompound.get(compoundProp.general) || new Set<string>();
+    
+    // Check if any property in the compound is modified
+    const isGeneralModified = compoundProp.subProperties.some(subProp => 
+      this.modifiedProperties.has(subProp)
+    );
+    const hasSideModifications = compoundProp.sides.some(side =>
+      side.subProperties.some(subProp => this.modifiedProperties.has(subProp))
+    );
+    const isModified = isGeneralModified || hasSideModifications;
+    
+    let html = `<div class="compound-property-container" data-compound="${compoundProp.general}">`;
+    
+    // Render general configuration section
+    html += `
+      <div class="compound-property-header">
+        <label class="${isModified ? 'active' : 'disabled'}">${translateProperty(compoundProp.general)}</label>
+      </div>
+      <div class="compound-property-general">
+        ${compoundProp.subProperties.map(subProp => 
+          this.renderPropertyInput(subProp, false)
+        ).join('')}
+      </div>
+    `;
+    
+    // Render "Add side-specific configuration" button
+    html += `
+      <div class="compound-add-side-container">
+        <button class="compound-add-side-btn" data-compound="${compoundProp.general}" title="${t('ui.compound.addSideConfig')}">
+          + ${t('ui.compound.addSideConfig')}
+        </button>
+      </div>
+    `;
+    
+    // Render active sides
+    if (activeSides.size > 0) {
+      html += `<div class="compound-sides-container">`;
+      
+      compoundProp.sides.forEach(side => {
+        if (activeSides.has(side.name)) {
+          const isSideModified = side.subProperties.some(subProp => 
+            this.modifiedProperties.has(subProp)
+          );
+          
+          html += `
+            <div class="compound-side-config" data-compound="${compoundProp.general}" data-side="${side.name}">
+              <div class="compound-side-header">
+                <label class="${isSideModified ? 'active' : 'disabled'}">${translateProperty(side.property)}</label>
+                <button class="compound-remove-side-btn" data-compound="${compoundProp.general}" data-side="${side.name}" title="${t('ui.compound.removeSide')}">
+                  ×
+                </button>
+              </div>
+              <div class="compound-side-properties">
+                ${side.subProperties.map(subProp => 
+                  this.renderPropertyInput(subProp, false)
+                ).join('')}
+              </div>
+            </div>
+          `;
+        }
+      });
+      
+      html += `</div>`;
+    }
+    
+    html += `</div>`;
+    
+    return html;
+  }
+
+  /**
    * Attach event listeners for spacing toggle buttons
    */
   private attachSpacingToggleListeners(): void {
@@ -723,6 +805,139 @@ export class CSSEditorPanel {
     // Mark as collapsed
     this.expandedSpacing.set(property, false);
     
+    // Re-render and apply
+    this.renderCommonProperties();
+    this.applyStyles();
+    this.updatePreview();
+  }
+
+  /**
+   * Attach event listeners for compound property buttons
+   */
+  private attachCompoundPropertyListeners(): void {
+    // Add side button
+    const addSideButtons = this.panel?.querySelectorAll('.compound-add-side-btn');
+    addSideButtons?.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const compoundName = (e.currentTarget as HTMLElement).getAttribute('data-compound');
+        if (compoundName) {
+          this.showSideSelector(compoundName);
+        }
+      });
+    });
+
+    // Remove side button
+    const removeSideButtons = this.panel?.querySelectorAll('.compound-remove-side-btn');
+    removeSideButtons?.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const compoundName = (e.currentTarget as HTMLElement).getAttribute('data-compound');
+        const sideName = (e.currentTarget as HTMLElement).getAttribute('data-side');
+        if (compoundName && sideName) {
+          this.removeSide(compoundName, sideName);
+        }
+      });
+    });
+  }
+
+  /**
+   * Show side selector modal for a compound property
+   */
+  private showSideSelector(compoundName: string): void {
+    const compoundProp = COMPOUND_PROPERTIES.find(cp => cp.general === compoundName);
+    if (!compoundProp) return;
+
+    const activeSides = this.expandedCompound.get(compoundName) || new Set<string>();
+    const availableSides = compoundProp.sides.filter(side => !activeSides.has(side.name));
+
+    if (availableSides.length === 0) {
+      alert(t('ui.compound.allSidesAdded'));
+      return;
+    }
+
+    // Create modal
+    const modal = document.createElement('div');
+    modal.className = 'side-selector-modal';
+    modal.innerHTML = `
+      <div class="side-selector-content">
+        <h3>${t('ui.compound.selectSide')}</h3>
+        <div class="side-list">
+          ${availableSides.map(side => 
+            `<button class="side-option" data-compound="${compoundName}" data-side="${side.name}">
+              ${translateProperty(side.property)}
+            </button>`
+          ).join('')}
+        </div>
+        <button class="modal-close">${t('ui.propertySelector.cancel')}</button>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Side selection
+    const sideOptions = modal.querySelectorAll('.side-option');
+    sideOptions.forEach(option => {
+      option.addEventListener('click', () => {
+        const compound = option.getAttribute('data-compound');
+        const side = option.getAttribute('data-side');
+        if (compound && side) {
+          this.addSide(compound, side);
+          modal.remove();
+        }
+      });
+    });
+
+    // Close button
+    const closeBtn = modal.querySelector('.modal-close');
+    closeBtn?.addEventListener('click', () => modal.remove());
+
+    // Close on backdrop click
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.remove();
+      }
+    });
+  }
+
+  /**
+   * Add a side to a compound property
+   */
+  private addSide(compoundName: string, sideName: string): void {
+    let activeSides = this.expandedCompound.get(compoundName);
+    if (!activeSides) {
+      activeSides = new Set<string>();
+      this.expandedCompound.set(compoundName, activeSides);
+    }
+    
+    activeSides.add(sideName);
+    
+    // Re-render the properties panel
+    this.renderCommonProperties();
+  }
+
+  /**
+   * Remove a side from a compound property
+   */
+  private removeSide(compoundName: string, sideName: string): void {
+    const compoundProp = COMPOUND_PROPERTIES.find(cp => cp.general === compoundName);
+    if (!compoundProp) return;
+
+    const side = compoundProp.sides.find(s => s.name === sideName);
+    if (!side) return;
+
+    // Clear all properties for this side
+    side.subProperties.forEach(subProp => {
+      this.modifiedProperties.delete(subProp);
+      this.currentStyles.delete(subProp);
+    });
+
+    // Remove side from active sides
+    const activeSides = this.expandedCompound.get(compoundName);
+    if (activeSides) {
+      activeSides.delete(sideName);
+    }
+
     // Re-render and apply
     this.renderCommonProperties();
     this.applyStyles();

@@ -40,6 +40,12 @@
       "expandToSides": "Expand to individual sides",
       "collapseToGeneral": "Collapse to {property}"
     },
+    "compound": {
+      "addSideConfig": "Add side-specific configuration",
+      "removeSide": "Remove side configuration",
+      "selectSide": "Select side",
+      "allSidesAdded": "All sides have been configured!"
+    },
     "messages": {
       "cssSaved": "CSS saved successfully!",
       "cssLoaded": "CSS loaded successfully!",
