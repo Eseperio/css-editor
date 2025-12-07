@@ -41,10 +41,11 @@
       "collapseToGeneral": "Collapse to {property}"
     },
     "compound": {
-      "addSideConfig": "Add side-specific configuration",
+      "addSideConfig": "sides",
       "removeSide": "Remove side configuration",
       "selectSide": "Select side",
-      "allSidesAdded": "All sides have been configured!"
+      "allSidesAdded": "All sides have been configured!",
+      "all": "all"
     },
     "messages": {
       "cssSaved": "CSS saved successfully!",

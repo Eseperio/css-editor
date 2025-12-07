@@ -677,7 +677,7 @@ export class CSSEditorPanel {
     // Render general configuration section
     html += `
       <div class="compound-property-header">
-        <label class="${isModified ? 'active' : 'disabled'}">${translateProperty(compoundProp.general)}</label>
+        <label class="compound-label ${isModified ? 'active' : 'disabled'}">${t('ui.compound.all')}</label>
       </div>
       <div class="compound-property-general">
         ${compoundProp.subProperties.map(subProp => 
@@ -708,7 +708,7 @@ export class CSSEditorPanel {
           html += `
             <div class="compound-side-config" data-compound="${compoundProp.general}" data-side="${side.name}">
               <div class="compound-side-header">
-                <label class="${isSideModified ? 'active' : 'disabled'}">${translateProperty(side.property)}</label>
+                <label class="compound-label ${isSideModified ? 'active' : 'disabled'}">${translateProperty(side.property)}</label>
                 <button class="compound-remove-side-btn" data-compound="${compoundProp.general}" data-side="${side.name}" title="${t('ui.compound.removeSide')}">
                   ×
                 </button>

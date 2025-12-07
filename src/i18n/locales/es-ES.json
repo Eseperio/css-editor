@@ -41,10 +41,11 @@
       "collapseToGeneral": "Contraer a {property}"
     },
     "compound": {
-      "addSideConfig": "Añadir configuración específica para lado",
+      "addSideConfig": "lados",
       "removeSide": "Eliminar configuración de lado",
       "selectSide": "Seleccionar lado",
-      "allSidesAdded": "¡Todos los lados han sido configurados!"
+      "allSidesAdded": "¡Todos los lados han sido configurados!",
+      "all": "todos"
     },
     "messages": {
       "cssSaved": "¡CSS guardado correctamente!",
