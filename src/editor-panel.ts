@@ -9,7 +9,8 @@ import {
   mapSizeSliderToValue,
   mapValueToSizeSlider,
   getFilterOption,
-  formatFilterValue
+  formatFilterValue,
+  CSS_UNITS
 } from './property-inputs';
 import { setLocale, t, translateProperty, translatePropertyGroup, Locale, getLocale, getAvailableLocales, getLocaleName } from './i18n';
 import './styles/editor-panel.scss';
@@ -769,9 +770,9 @@ export class CSSEditorPanel {
     const currentValue = this.currentStyles.get(multiValueProp.property) || '';
     const shadows = this.parseBoxShadow(currentValue);
     
-    // Store shadows in state
+    // Store shadows in state - don't create default shadow, start empty
     if (!this.multiValueShadows.has(multiValueProp.property)) {
-      this.multiValueShadows.set(multiValueProp.property, shadows.length > 0 ? shadows : [this.createDefaultShadow(multiValueProp)]);
+      this.multiValueShadows.set(multiValueProp.property, shadows.length > 0 ? shadows : []);
     }
     
     const activeShadows = this.multiValueShadows.get(multiValueProp.property) || [];
@@ -789,11 +790,9 @@ export class CSSEditorPanel {
             <label class="compound-label ${shadowModified ? 'active' : 'disabled'}">
               ${t('ui.shadow.shadow')} ${index + 1}
             </label>
-            ${activeShadows.length > 1 ? `
-              <button class="multi-value-remove-btn" data-property="${multiValueProp.property}" data-index="${index}" title="${t('ui.shadow.removeShadow')}">
-                ×
-              </button>
-            ` : ''}
+            <button class="multi-value-remove-btn" data-property="${multiValueProp.property}" data-index="${index}" title="${t('ui.shadow.removeShadow')}">
+              ×
+            </button>
           </div>
           <div class="multi-value-components">
             ${this.renderShadowComponents(multiValueProp, shadow, index)}
@@ -819,22 +818,50 @@ export class CSSEditorPanel {
   /**
    * Render components for a single shadow
    */
+  /**
+   * Render shadow components without data-property attributes to avoid conflicts
+   */
   private renderShadowComponents(multiValueProp: MultiValueProperty, shadow: any, index: number): string {
     return multiValueProp.components.map(component => {
       const value = shadow[component.name] || component.defaultValue || '';
+      const inputName = `${multiValueProp.property}-${index}-${component.name}`;
       
       if (component.type === 'size') {
+        const parsed = parseCSSValue(value);
+        const maxValue = 500;
+        const sliderValue = mapValueToSizeSlider(parsed.number);
+        
         return `
           <div class="shadow-component">
             <label>${t(`ui.shadow.${component.name}`)}</label>
-            ${createSizeInput(`${multiValueProp.property}-${index}-${component.name}`, value)}
+            <div class="property-input-group size-input-group">
+              <input type="range" 
+                     class="size-slider" 
+                     name="${inputName}"
+                     min="0" 
+                     max="100" 
+                     step="0.1"
+                     value="${sliderValue}" 
+                     title="${t('ui.inputs.adjustValue')}" />
+              <input type="number" 
+                     class="size-number-input" 
+                     name="${inputName}"
+                     value="${parsed.number}" 
+                     step="1"
+                     min="0" />
+              <select class="size-unit-selector" name="${inputName}">
+                ${CSS_UNITS.map(unit => 
+                  `<option value="${unit}" ${parsed.unit === unit ? 'selected' : ''}>${unit}</option>`
+                ).join('')}
+              </select>
+            </div>
           </div>
         `;
       } else if (component.type === 'color') {
         return `
           <div class="shadow-component">
             <label>${t(`ui.shadow.${component.name}`)}</label>
-            ${createColorInput(`${multiValueProp.property}-${index}-${component.name}`, value)}
+            ${createColorInput(inputName, value).replace(/data-property="[^"]*"/g, `name="${inputName}"`)}
           </div>
         `;
       } else if (component.type === 'select') {
@@ -842,7 +869,7 @@ export class CSSEditorPanel {
         return `
           <div class="shadow-component">
             <label>${t(`ui.shadow.${component.name}`)}</label>
-            <select data-property="${multiValueProp.property}" data-index="${index}" data-component="${component.name}">
+            <select name="${inputName}">
               <option value="">${t('ui.inputs.selectOption')}</option>
               ${options.map(opt => 
                 `<option value="${opt}" ${value === opt ? 'selected' : ''}>${opt || t('ui.inputs.selectOption')}</option>`
@@ -1196,14 +1223,21 @@ export class CSSEditorPanel {
    */
   private removeShadow(property: string, index: number): void {
     const shadows = this.multiValueShadows.get(property) || [];
-    if (shadows.length <= 1) return; // Keep at least one shadow
-
+    
     shadows.splice(index, 1);
     this.multiValueShadows.set(property, shadows);
+    
+    // If no shadows left, remove the property entirely
+    if (shadows.length === 0) {
+      this.currentStyles.delete(property);
+      this.modifiedProperties.delete(property);
+    }
 
     // Re-render and apply
     this.renderCommonProperties();
-    this.updateBoxShadowProperty(property);
+    if (shadows.length > 0) {
+      this.updateBoxShadowProperty(property);
+    }
     this.applyStyles();
     this.updatePreview();
   }
