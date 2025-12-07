@@ -1258,11 +1258,62 @@ export class CSSEditorPanel {
     const shadows = this.multiValueShadows.get(property) || [];
     if (!shadows[index]) return;
 
-    // Type-safe property assignment
-    const key = component as keyof ShadowConfig;
-    if (key in shadows[index]) {
-      shadows[index][key] = input.value;
+    // Find the shadow component container for this input
+    const shadowCard = input.closest('.multi-value-item');
+    if (!shadowCard) return;
+
+    // Handle different input types
+    if (input.classList.contains('size-slider')) {
+      // Slider changed - update number input and shadow value
+      const numberInput = shadowCard.querySelector(`.size-number-input[name="${input.name}"]`) as HTMLInputElement;
+      const unitSelector = shadowCard.querySelector(`.size-unit-selector[name="${input.name}"]`) as HTMLSelectElement;
+      
+      const sliderVal = parseFloat(input.value);
+      const mappedValue = mapSizeSliderToValue(sliderVal);
+      
+      if (numberInput) {
+        numberInput.value = Math.round(mappedValue).toString();
+      }
+      
+      const unit = unitSelector?.value || 'px';
+      const key = component as keyof ShadowConfig;
+      if (key in shadows[index]) {
+        shadows[index][key] = `${Math.round(mappedValue)}${unit}`;
+      }
+    } else if (input.classList.contains('size-number-input')) {
+      // Number input changed - update slider and shadow value
+      const slider = shadowCard.querySelector(`.size-slider[name="${input.name}"]`) as HTMLInputElement;
+      const unitSelector = shadowCard.querySelector(`.size-unit-selector[name="${input.name}"]`) as HTMLSelectElement;
+      
+      const numeric = parseFloat(input.value);
+      
+      if (slider && !Number.isNaN(numeric)) {
+        slider.value = mapValueToSizeSlider(numeric).toString();
+      }
+      
+      const unit = unitSelector?.value || 'px';
+      const key = component as keyof ShadowConfig;
+      if (key in shadows[index]) {
+        shadows[index][key] = `${numeric}${unit}`;
+      }
+    } else if (input.classList.contains('size-unit-selector')) {
+      // Unit changed - update shadow value with new unit
+      const numberInput = shadowCard.querySelector(`.size-number-input[name="${input.name}"]`) as HTMLInputElement;
+      const numeric = numberInput ? parseFloat(numberInput.value) : 0;
+      const unit = input.value;
+      
+      const key = component as keyof ShadowConfig;
+      if (key in shadows[index]) {
+        shadows[index][key] = `${numeric}${unit}`;
+      }
+    } else {
+      // Other inputs (color, select) - just update the value
+      const key = component as keyof ShadowConfig;
+      if (key in shadows[index]) {
+        shadows[index][key] = input.value;
+      }
     }
+    
     this.multiValueShadows.set(property, shadows);
 
     this.updateBoxShadowProperty(property);
