@@ -1294,7 +1294,7 @@ export class CSSEditorPanel {
       const unit = unitSelector?.value || 'px';
       const key = component as keyof ShadowConfig;
       if (key in shadows[index]) {
-        shadows[index][key] = `${numeric}${unit}`;
+        shadows[index][key] = `${Math.round(numeric)}${unit}`;
       }
     } else if (input.classList.contains('size-unit-selector')) {
       // Unit changed - update shadow value with new unit
@@ -1304,7 +1304,7 @@ export class CSSEditorPanel {
       
       const key = component as keyof ShadowConfig;
       if (key in shadows[index]) {
-        shadows[index][key] = `${numeric}${unit}`;
+        shadows[index][key] = `${Math.round(numeric)}${unit}`;
       }
     } else {
       // Other inputs (color, select) - just update the value
