@@ -714,9 +714,7 @@ export class CSSEditorPanel {
                 </button>
               </div>
               <div class="compound-side-properties">
-                ${side.subProperties.map(subProp => 
-                  this.renderPropertyInput(subProp, false)
-                ).join('')}
+                ${this.renderSideProperties(compoundProp, side).join('')}
               </div>
             </div>
           `;
@@ -729,6 +727,16 @@ export class CSSEditorPanel {
     html += `</div>`;
     
     return html;
+  }
+
+  /**
+   * Render properties for a side, showing all general properties that have side-specific versions
+   */
+  private renderSideProperties(compoundProp: CompoundProperty, side: { name: string; property: string; subProperties: string[] }): string[] {
+    // Only render properties that actually have side-specific versions
+    return side.subProperties.map(sideProp => 
+      this.renderPropertyInput(sideProp, false)
+    );
   }
 
   /**

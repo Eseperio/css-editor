@@ -55,7 +55,7 @@ export const SPACING_PROPERTIES: SpacingProperty[] = [
 export const COMPOUND_PROPERTIES: CompoundProperty[] = [
   {
     general: 'border',
-    subProperties: ['border-width', 'border-style', 'border-color'],
+    subProperties: ['border-width', 'border-style', 'border-color', 'border-radius'],
     sides: [
       {
         name: 'top',
@@ -93,7 +93,6 @@ export const PROPERTY_GROUPS: PropertyGroup[] = [
     name: 'Border',
     properties: [
       'border',
-      'border-radius',
       'box-shadow'
     ]
   },
