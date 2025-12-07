@@ -1,4 +1,4 @@
-import { CSS_PROPERTIES, COMMON_PROPERTIES, PROPERTY_GROUPS, PropertyGroup, getPropertyValues, getAdvancedProperties, SPACING_PROPERTIES } from './css-properties';
+import { CSS_PROPERTIES, COMMON_PROPERTIES, PROPERTY_GROUPS, PropertyGroup, getPropertyValues, getAdvancedProperties, SPACING_PROPERTIES, COMPOUND_PROPERTIES, CompoundProperty, MULTI_VALUE_PROPERTIES, MultiValueProperty } from './css-properties';
 import { 
   getPropertyInputType, 
   createColorInput, 
@@ -9,7 +9,8 @@ import {
   mapSizeSliderToValue,
   mapValueToSizeSlider,
   getFilterOption,
-  formatFilterValue
+  formatFilterValue,
+  CSS_UNITS
 } from './property-inputs';
 import { setLocale, t, translateProperty, translatePropertyGroup, Locale, getLocale, getAvailableLocales, getLocaleName } from './i18n';
 import './styles/editor-panel.scss';
@@ -49,6 +50,18 @@ interface SelectorPart {
 }
 
 /**
+ * Interface for box-shadow configuration
+ */
+interface ShadowConfig {
+  x: string;
+  y: string;
+  blur: string;
+  spread: string;
+  color: string;
+  inset: string;
+}
+
+/**
  * CSS Editor Panel class
  */
 export class CSSEditorPanel {
@@ -62,6 +75,8 @@ export class CSSEditorPanel {
     PROPERTY_GROUPS.map(group => group.name)
   ); // Track collapsed property groups, default to collapsed
   private expandedSpacing: Map<string, boolean> = new Map(); // Track expanded spacing properties (margin/padding)
+  private expandedCompound: Map<string, Set<string>> = new Map(); // Track expanded compound properties (border) with active sides
+  private multiValueShadows: Map<string, ShadowConfig[]> = new Map(); // Track multi-value properties like box-shadow
   private anchorPosition: 'right' | 'left' | 'top' | 'bottom' = 'right';
   private options: CSSEditorOptions;
   private styleElement: HTMLStyleElement;
@@ -508,8 +523,22 @@ export class CSSEditorPanel {
       const dependencyWarning = group.dependsOn && !dependencyMet ? group.dependsOn.warning : '';
       
       // Generate properties HTML for this group
-      const propertiesHtml = group.properties.map(prop => {
-        // Check if this is a spacing property (margin/padding)
+      const propertiesHtml = group.properties.map((prop, index) => {
+        // Check if this is a compound property (border)
+        const compoundProp = COMPOUND_PROPERTIES.find(cp => cp.general === prop);
+        if (compoundProp) {
+          // Add separator after compound property if not last property in group
+          const separator = index < group.properties.length - 1 ? '<div class="compound-separator"></div>' : '';
+          return this.renderCompoundProperty(compoundProp) + separator;
+        }
+        
+        // Check if this is a multi-value property (box-shadow)
+        const multiValueProp = MULTI_VALUE_PROPERTIES.find(mvp => mvp.property === prop);
+        if (multiValueProp) {
+          return this.renderMultiValueProperty(multiValueProp);
+        }
+        
+        // Check if this is a spacing property (margin/padding/border-radius)
         const spacingProp = SPACING_PROPERTIES.find(sp => sp.general === prop);
         const isExpanded = this.expandedSpacing.get(prop) || false;
         
@@ -570,6 +599,8 @@ export class CSSEditorPanel {
     this.attachPropertyListeners(container);
     this.attachGroupToggleListeners();
     this.attachSpacingToggleListeners();
+    this.attachCompoundPropertyListeners();
+    this.attachMultiValuePropertyListeners();
   }
 
   /**
@@ -650,6 +681,272 @@ export class CSSEditorPanel {
   }
 
   /**
+   * Render a compound property (like border) with general configuration and side-specific options
+   */
+  private renderCompoundProperty(compoundProp: CompoundProperty): string {
+    const activeSides = this.expandedCompound.get(compoundProp.general) || new Set<string>();
+    
+    // Check if any property in the compound is modified
+    const isGeneralModified = compoundProp.subProperties.some(subProp => 
+      this.modifiedProperties.has(subProp)
+    );
+    const hasSideModifications = compoundProp.sides.some(side =>
+      side.subProperties.some(subProp => this.modifiedProperties.has(subProp))
+    );
+    const isModified = isGeneralModified || hasSideModifications;
+    
+    let html = `<div class="compound-property-container" data-compound="${compoundProp.general}">`;
+    
+    // Render general configuration section
+    html += `
+      <div class="compound-property-general">
+        <div class="compound-property-header">
+          <label class="compound-label ${isModified ? 'active' : 'disabled'}">${t('ui.compound.all')}</label>
+        </div>
+        ${compoundProp.subProperties.map(subProp => 
+          this.renderPropertyInput(subProp, false)
+        ).join('')}
+      </div>
+    `;
+    
+    // Render "Add side-specific configuration" button
+    html += `
+      <div class="compound-add-side-container">
+        <button class="compound-add-side-btn" data-compound="${compoundProp.general}" title="${t('ui.compound.addSideConfig')}">
+          + ${t('ui.compound.addSideConfig')}
+        </button>
+      </div>
+    `;
+    
+    // Render active sides
+    if (activeSides.size > 0) {
+      html += `<div class="compound-sides-container">`;
+      
+      compoundProp.sides.forEach(side => {
+        if (activeSides.has(side.name)) {
+          const isSideModified = side.subProperties.some(subProp => 
+            this.modifiedProperties.has(subProp)
+          );
+          
+          html += `
+            <div class="compound-side-config" data-compound="${compoundProp.general}" data-side="${side.name}">
+              <div class="compound-side-header">
+                <label class="compound-label ${isSideModified ? 'active' : 'disabled'}">${translateProperty(side.property)}</label>
+                <button class="compound-remove-side-btn" data-compound="${compoundProp.general}" data-side="${side.name}" title="${t('ui.compound.removeSide')}">
+                  ×
+                </button>
+              </div>
+              <div class="compound-side-properties">
+                ${this.renderSideProperties(compoundProp, side).join('')}
+              </div>
+            </div>
+          `;
+        }
+      });
+      
+      html += `</div>`;
+    }
+    
+    html += `</div>`;
+    
+    return html;
+  }
+
+  /**
+   * Render side-specific sub-properties for a compound property side
+   */
+  private renderSideProperties(compoundProp: CompoundProperty, side: { name: string; property: string; subProperties: string[] }): string[] {
+    // Render side-specific properties (e.g., border-left-width, border-left-style, border-left-color)
+    return side.subProperties.map(sideProp => 
+      this.renderPropertyInput(sideProp, false)
+    );
+  }
+
+  /**
+   * Render multi-value property (e.g., box-shadow with multiple shadows)
+   */
+  private renderMultiValueProperty(multiValueProp: MultiValueProperty): string {
+    // Parse current value to get existing shadows
+    const currentValue = this.currentStyles.get(multiValueProp.property) || '';
+    const shadows = this.parseBoxShadow(currentValue);
+    
+    // Store shadows in state - don't create default shadow, start empty
+    if (!this.multiValueShadows.has(multiValueProp.property)) {
+      this.multiValueShadows.set(multiValueProp.property, shadows.length > 0 ? shadows : []);
+    }
+    
+    const activeShadows = this.multiValueShadows.get(multiValueProp.property) || [];
+    const isModified = this.modifiedProperties.has(multiValueProp.property);
+    
+    let html = `<div class="multi-value-property-container" data-property="${multiValueProp.property}">`;
+    
+    // Render each shadow
+    activeShadows.forEach((shadow, index) => {
+      const shadowModified = isModified && index < activeShadows.length;
+      
+      html += `
+        <div class="multi-value-item" data-property="${multiValueProp.property}" data-index="${index}">
+          <div class="multi-value-header">
+            <label class="compound-label ${shadowModified ? 'active' : 'disabled'}">
+              ${t('ui.shadow.shadow')} ${index + 1}
+            </label>
+            <button class="multi-value-remove-btn" data-property="${multiValueProp.property}" data-index="${index}" title="${t('ui.shadow.removeShadow')}">
+              ×
+            </button>
+          </div>
+          <div class="multi-value-components">
+            ${this.renderShadowComponents(multiValueProp, shadow, index)}
+          </div>
+        </div>
+      `;
+    });
+    
+    // Add shadow button
+    html += `
+      <div class="multi-value-add-container">
+        <button class="multi-value-add-btn" data-property="${multiValueProp.property}" title="${t('ui.shadow.addShadow')}">
+          + ${t('ui.shadow.addShadow')}
+        </button>
+      </div>
+    `;
+    
+    html += `</div>`;
+    
+    return html;
+  }
+
+  /**
+   * Render components for a single shadow
+   */
+  /**
+   * Render shadow components without data-property attributes to avoid conflicts
+   */
+  private renderShadowComponents(multiValueProp: MultiValueProperty, shadow: any, index: number): string {
+    return multiValueProp.components.map(component => {
+      const value = shadow[component.name] || component.defaultValue || '';
+      const inputName = `${multiValueProp.property}-${index}-${component.name}`;
+      
+      if (component.type === 'size') {
+        const parsed = parseCSSValue(value);
+        const maxValue = 500;
+        const sliderValue = mapValueToSizeSlider(parsed.number);
+        
+        return `
+          <div class="shadow-component">
+            <label>${t(`ui.shadow.${component.name}`)}</label>
+            <div class="property-input-group size-input-group">
+              <input type="range" 
+                     class="size-slider" 
+                     name="${inputName}"
+                     min="0" 
+                     max="100" 
+                     step="0.1"
+                     value="${sliderValue}" 
+                     title="${t('ui.inputs.adjustValue')}" />
+              <input type="number" 
+                     class="size-number-input" 
+                     name="${inputName}"
+                     value="${parsed.number}" 
+                     step="1"
+                     min="0" />
+              <select class="size-unit-selector" name="${inputName}">
+                ${CSS_UNITS.map(unit => 
+                  `<option value="${unit}" ${parsed.unit === unit ? 'selected' : ''}>${unit}</option>`
+                ).join('')}
+              </select>
+            </div>
+          </div>
+        `;
+      } else if (component.type === 'color') {
+        return `
+          <div class="shadow-component">
+            <label>${t(`ui.shadow.${component.name}`)}</label>
+            ${createColorInput(inputName, value).replace(/data-property="[^"]*"/g, `name="${inputName}"`)}
+          </div>
+        `;
+      } else if (component.type === 'select') {
+        const options = component.options || [];
+        return `
+          <div class="shadow-component">
+            <label>${t(`ui.shadow.${component.name}`)}</label>
+            <select name="${inputName}">
+              <option value="">${t('ui.inputs.selectOption')}</option>
+              ${options.map(opt => 
+                `<option value="${opt}" ${value === opt ? 'selected' : ''}>${opt || t('ui.inputs.selectOption')}</option>`
+              ).join('')}
+            </select>
+          </div>
+        `;
+      }
+      return '';
+    }).join('');
+  }
+
+  /**
+   * Parse box-shadow CSS value into individual shadows
+   */
+  private parseBoxShadow(value: string): ShadowConfig[] {
+    if (!value || value === 'none') return [];
+    
+    // Parse box-shadow values into structured shadow objects
+    // Note: This is a simplified parser that handles common cases.
+    // Complex cases with calc() or variables may need additional handling.
+    const shadows: ShadowConfig[] = [];
+    const parts = value.split(/,(?![^(]*\))/); // Split by comma, but not inside parentheses
+    
+    parts.forEach(part => {
+      part = part.trim();
+      const shadow: ShadowConfig = {
+        x: '0px',
+        y: '0px',
+        blur: '0px',
+        spread: '0px',
+        color: 'rgba(0, 0, 0, 0.5)',
+        inset: ''
+      };
+      
+      // Check for inset
+      if (part.includes('inset')) {
+        shadow.inset = 'inset';
+        part = part.replace('inset', '').trim();
+      }
+      
+      // Parse remaining parts (x y blur spread color)
+      const tokens = part.match(/([+-]?[\d.]+[a-z%]*|rgba?\([^)]+\)|#[0-9a-f]+)/gi) || [];
+      
+      if (tokens.length > 0 && tokens[0]) shadow.x = tokens[0];
+      if (tokens.length > 1 && tokens[1]) shadow.y = tokens[1];
+      if (tokens.length > 2 && tokens[2]) shadow.blur = tokens[2];
+      if (tokens.length > 3 && tokens[3]) shadow.spread = tokens[3];
+      if (tokens.length > 4 && tokens[4]) shadow.color = tokens[4];
+      
+      shadows.push(shadow);
+    });
+    
+    return shadows.length > 0 ? shadows : [];
+  }
+
+  /**
+   * Create default shadow object
+   */
+  private createDefaultShadow(multiValueProp: MultiValueProperty): ShadowConfig {
+    const shadow: ShadowConfig = {
+      x: '0px',
+      y: '0px',
+      blur: '0px',
+      spread: '0px',
+      color: 'rgba(0, 0, 0, 0.5)',
+      inset: ''
+    };
+    multiValueProp.components.forEach(component => {
+      if (component.defaultValue) {
+        shadow[component.name as keyof ShadowConfig] = component.defaultValue;
+      }
+    });
+    return shadow;
+  }
+
+  /**
    * Attach event listeners for spacing toggle buttons
    */
   private attachSpacingToggleListeners(): void {
@@ -727,6 +1024,323 @@ export class CSSEditorPanel {
     this.renderCommonProperties();
     this.applyStyles();
     this.updatePreview();
+  }
+
+  /**
+   * Attach event listeners for compound property buttons
+   */
+  private attachCompoundPropertyListeners(): void {
+    // Add side button
+    const addSideButtons = this.panel?.querySelectorAll('.compound-add-side-btn');
+    addSideButtons?.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const compoundName = (e.currentTarget as HTMLElement).getAttribute('data-compound');
+        if (compoundName) {
+          this.showSideSelector(compoundName);
+        }
+      });
+    });
+
+    // Remove side button
+    const removeSideButtons = this.panel?.querySelectorAll('.compound-remove-side-btn');
+    removeSideButtons?.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const compoundName = (e.currentTarget as HTMLElement).getAttribute('data-compound');
+        const sideName = (e.currentTarget as HTMLElement).getAttribute('data-side');
+        if (compoundName && sideName) {
+          this.removeSide(compoundName, sideName);
+        }
+      });
+    });
+  }
+
+  /**
+   * Show side selector modal for a compound property
+   */
+  private showSideSelector(compoundName: string): void {
+    const compoundProp = COMPOUND_PROPERTIES.find(cp => cp.general === compoundName);
+    if (!compoundProp) return;
+
+    const activeSides = this.expandedCompound.get(compoundName) || new Set<string>();
+    const availableSides = compoundProp.sides.filter(side => !activeSides.has(side.name));
+
+    if (availableSides.length === 0) {
+      alert(t('ui.compound.allSidesAdded'));
+      return;
+    }
+
+    // Create modal
+    const modal = document.createElement('div');
+    modal.className = 'side-selector-modal';
+    modal.innerHTML = `
+      <div class="side-selector-content">
+        <h3>${t('ui.compound.selectSide')}</h3>
+        <div class="side-list">
+          ${availableSides.map(side => 
+            `<button class="side-option" data-compound="${compoundName}" data-side="${side.name}">
+              ${translateProperty(side.property)}
+            </button>`
+          ).join('')}
+        </div>
+        <button class="modal-close">${t('ui.propertySelector.cancel')}</button>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Side selection
+    const sideOptions = modal.querySelectorAll('.side-option');
+    sideOptions.forEach(option => {
+      option.addEventListener('click', () => {
+        const compound = option.getAttribute('data-compound');
+        const side = option.getAttribute('data-side');
+        if (compound && side) {
+          this.addSide(compound, side);
+          modal.remove();
+        }
+      });
+    });
+
+    // Close button
+    const closeBtn = modal.querySelector('.modal-close');
+    closeBtn?.addEventListener('click', () => modal.remove());
+
+    // Close on backdrop click
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.remove();
+      }
+    });
+  }
+
+  /**
+   * Add a side to a compound property
+   */
+  private addSide(compoundName: string, sideName: string): void {
+    let activeSides = this.expandedCompound.get(compoundName);
+    if (!activeSides) {
+      activeSides = new Set<string>();
+      this.expandedCompound.set(compoundName, activeSides);
+    }
+    
+    activeSides.add(sideName);
+    
+    // Re-render the properties panel
+    this.renderCommonProperties();
+  }
+
+  /**
+   * Remove a side from a compound property
+   */
+  private removeSide(compoundName: string, sideName: string): void {
+    const compoundProp = COMPOUND_PROPERTIES.find(cp => cp.general === compoundName);
+    if (!compoundProp) return;
+
+    const side = compoundProp.sides.find(s => s.name === sideName);
+    if (!side) return;
+
+    // Clear all properties for this side
+    side.subProperties.forEach(subProp => {
+      this.modifiedProperties.delete(subProp);
+      this.currentStyles.delete(subProp);
+    });
+
+    // Remove side from active sides
+    const activeSides = this.expandedCompound.get(compoundName);
+    if (activeSides) {
+      activeSides.delete(sideName);
+    }
+
+    // Re-render and apply
+    this.renderCommonProperties();
+    this.applyStyles();
+    this.updatePreview();
+  }
+
+  /**
+   * Attach event listeners for multi-value properties (box-shadow)
+   */
+  private attachMultiValuePropertyListeners(): void {
+    // Add shadow button
+    const addShadowButtons = this.panel?.querySelectorAll('.multi-value-add-btn');
+    addShadowButtons?.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const property = (e.currentTarget as HTMLElement).getAttribute('data-property');
+        if (property) {
+          this.addShadow(property);
+        }
+      });
+    });
+
+    // Remove shadow button
+    const removeShadowButtons = this.panel?.querySelectorAll('.multi-value-remove-btn');
+    removeShadowButtons?.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const property = (e.currentTarget as HTMLElement).getAttribute('data-property');
+        const index = parseInt((e.currentTarget as HTMLElement).getAttribute('data-index') || '0');
+        if (property !== null) {
+          this.removeShadow(property, index);
+        }
+      });
+    });
+
+    // Shadow component inputs
+    const shadowInputs = this.panel?.querySelectorAll('.shadow-component input, .shadow-component select');
+    shadowInputs?.forEach(input => {
+      input.addEventListener('input', (e) => {
+        this.handleShadowComponentChange(e);
+      });
+      input.addEventListener('change', (e) => {
+        this.handleShadowComponentChange(e);
+      });
+    });
+  }
+
+  /**
+   * Add a new shadow to a multi-value property
+   */
+  private addShadow(property: string): void {
+    const multiValueProp = MULTI_VALUE_PROPERTIES.find(mvp => mvp.property === property);
+    if (!multiValueProp) return;
+
+    const shadows = this.multiValueShadows.get(property) || [];
+    shadows.push(this.createDefaultShadow(multiValueProp));
+    this.multiValueShadows.set(property, shadows);
+
+    // Re-render and apply
+    this.renderCommonProperties();
+    this.updateBoxShadowProperty(property);
+    this.applyStyles();
+    this.updatePreview();
+  }
+
+  /**
+   * Remove a shadow from a multi-value property
+   */
+  private removeShadow(property: string, index: number): void {
+    const shadows = this.multiValueShadows.get(property) || [];
+    
+    shadows.splice(index, 1);
+    this.multiValueShadows.set(property, shadows);
+    
+    // If no shadows left, remove the property entirely
+    if (shadows.length === 0) {
+      this.currentStyles.delete(property);
+      this.modifiedProperties.delete(property);
+    }
+
+    // Re-render and apply
+    this.renderCommonProperties();
+    if (shadows.length > 0) {
+      this.updateBoxShadowProperty(property);
+    }
+    this.applyStyles();
+    this.updatePreview();
+  }
+
+  /**
+   * Handle shadow component value change
+   */
+  private handleShadowComponentChange(e: Event): void {
+    const input = e.target as HTMLInputElement | HTMLSelectElement;
+    
+    // Extract property, index, and component from the input name
+    const match = input.name?.match(/^(.+)-(\d+)-(.+)$/);
+    if (!match) return;
+
+    const [, property, indexStr, component] = match;
+    const index = parseInt(indexStr);
+
+    const shadows = this.multiValueShadows.get(property) || [];
+    if (!shadows[index]) return;
+
+    // Find the shadow component container for this input
+    const shadowCard = input.closest('.multi-value-item');
+    if (!shadowCard) return;
+
+    // Handle different input types
+    if (input.classList.contains('size-slider')) {
+      // Slider changed - update number input and shadow value
+      const numberInput = shadowCard.querySelector(`.size-number-input[name="${input.name}"]`) as HTMLInputElement;
+      const unitSelector = shadowCard.querySelector(`.size-unit-selector[name="${input.name}"]`) as HTMLSelectElement;
+      
+      const sliderVal = parseFloat(input.value);
+      const mappedValue = mapSizeSliderToValue(sliderVal);
+      
+      if (numberInput) {
+        numberInput.value = Math.round(mappedValue).toString();
+      }
+      
+      const unit = unitSelector?.value || 'px';
+      const key = component as keyof ShadowConfig;
+      if (key in shadows[index]) {
+        shadows[index][key] = `${Math.round(mappedValue)}${unit}`;
+      }
+    } else if (input.classList.contains('size-number-input')) {
+      // Number input changed - update slider and shadow value
+      const slider = shadowCard.querySelector(`.size-slider[name="${input.name}"]`) as HTMLInputElement;
+      const unitSelector = shadowCard.querySelector(`.size-unit-selector[name="${input.name}"]`) as HTMLSelectElement;
+      
+      const numeric = parseFloat(input.value);
+      
+      if (slider && !Number.isNaN(numeric)) {
+        slider.value = mapValueToSizeSlider(numeric).toString();
+      }
+      
+      const unit = unitSelector?.value || 'px';
+      const key = component as keyof ShadowConfig;
+      if (key in shadows[index]) {
+        shadows[index][key] = `${Math.round(numeric)}${unit}`;
+      }
+    } else if (input.classList.contains('size-unit-selector')) {
+      // Unit changed - update shadow value with new unit
+      const numberInput = shadowCard.querySelector(`.size-number-input[name="${input.name}"]`) as HTMLInputElement;
+      const numeric = numberInput ? parseFloat(numberInput.value) : 0;
+      const unit = input.value;
+      
+      const key = component as keyof ShadowConfig;
+      if (key in shadows[index]) {
+        shadows[index][key] = `${Math.round(numeric)}${unit}`;
+      }
+    } else {
+      // Other inputs (color, select) - just update the value
+      const key = component as keyof ShadowConfig;
+      if (key in shadows[index]) {
+        shadows[index][key] = input.value;
+      }
+    }
+    
+    this.multiValueShadows.set(property, shadows);
+
+    this.updateBoxShadowProperty(property);
+    this.applyStyles();
+    this.updatePreview();
+  }
+
+  /**
+   * Update the box-shadow CSS property from shadow objects
+   */
+  private updateBoxShadowProperty(property: string): void {
+    const shadows = this.multiValueShadows.get(property) || [];
+    
+    const shadowStrings = shadows.map(shadow => {
+      const parts: string[] = [];
+      if (shadow.inset) parts.push(shadow.inset);
+      parts.push(shadow.x || '0px');
+      parts.push(shadow.y || '0px');
+      parts.push(shadow.blur || '0px');
+      parts.push(shadow.spread || '0px');
+      parts.push(shadow.color || 'rgba(0, 0, 0, 0.5)');
+      return parts.join(' ');
+    });
+
+    const value = shadowStrings.join(', ');
+    this.currentStyles.set(property, value);
+    this.modifiedProperties.add(property);
   }
 
   /**
