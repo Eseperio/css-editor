@@ -1033,10 +1033,6 @@ $panel-height-horizontal: 300px;
 
 // Compound property styles
 .compound-property-container {
-  background: var(--editor-bg-muted);
-  border: 1px solid var(--editor-border);
-  border-radius: var(--editor-radius-sm);
-  padding: 12px;
   margin: 8px 0;
 
   .compound-property-header {
@@ -1087,6 +1083,12 @@ $panel-height-horizontal: 300px;
         }
       }
     }
+  }
+
+  .compound-separator {
+    height: 1px;
+    background: var(--editor-border);
+    margin: 12px 0;
   }
 
   .compound-add-side-container {

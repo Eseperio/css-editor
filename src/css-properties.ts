@@ -46,6 +46,10 @@ export const SPACING_PROPERTIES: SpacingProperty[] = [
   {
     general: 'padding',
     sides: ['padding-top', 'padding-right', 'padding-bottom', 'padding-left']
+  },
+  {
+    general: 'border-radius',
+    sides: ['border-top-left-radius', 'border-top-right-radius', 'border-bottom-right-radius', 'border-bottom-left-radius']
   }
 ];
 
@@ -55,7 +59,7 @@ export const SPACING_PROPERTIES: SpacingProperty[] = [
 export const COMPOUND_PROPERTIES: CompoundProperty[] = [
   {
     general: 'border',
-    subProperties: ['border-width', 'border-style', 'border-color', 'border-radius'],
+    subProperties: ['border-width', 'border-style', 'border-color'],
     sides: [
       {
         name: 'top',
@@ -93,6 +97,7 @@ export const PROPERTY_GROUPS: PropertyGroup[] = [
     name: 'Border',
     properties: [
       'border',
+      'border-radius',
       'box-shadow'
     ]
   },

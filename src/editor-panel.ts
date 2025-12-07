@@ -509,14 +509,16 @@ export class CSSEditorPanel {
       const dependencyWarning = group.dependsOn && !dependencyMet ? group.dependsOn.warning : '';
       
       // Generate properties HTML for this group
-      const propertiesHtml = group.properties.map(prop => {
+      const propertiesHtml = group.properties.map((prop, index) => {
         // Check if this is a compound property (border)
         const compoundProp = COMPOUND_PROPERTIES.find(cp => cp.general === prop);
         if (compoundProp) {
-          return this.renderCompoundProperty(compoundProp);
+          // Add separator after compound property if not last property in group
+          const separator = index < group.properties.length - 1 ? '<div class="compound-separator"></div>' : '';
+          return this.renderCompoundProperty(compoundProp) + separator;
         }
         
-        // Check if this is a spacing property (margin/padding)
+        // Check if this is a spacing property (margin/padding/border-radius)
         const spacingProp = SPACING_PROPERTIES.find(sp => sp.general === prop);
         const isExpanded = this.expandedSpacing.get(prop) || false;
         
