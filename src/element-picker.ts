@@ -6,6 +6,16 @@ export class ElementPicker {
   private overlay: HTMLElement | null = null;
   private onElementSelected: ((element: Element) => void) | null = null;
   private currentHighlighted: Element | null = null;
+  private targetDocument: Document = document;
+  private targetIframe: HTMLIFrameElement | null = null;
+
+  /**
+   * Set target document for picker (for iframe mode)
+   */
+  public setTargetDocument(doc: Document, iframe?: HTMLIFrameElement): void {
+    this.targetDocument = doc;
+    this.targetIframe = iframe || null;
+  }
 
   /**
    * Start picking mode
@@ -18,6 +28,9 @@ export class ElementPicker {
     this.createOverlay();
     this.attachListeners();
     document.body.style.cursor = 'crosshair';
+    if (this.targetIframe && this.targetDocument.body) {
+      this.targetDocument.body.style.cursor = 'crosshair';
+    }
   }
 
   /**
@@ -30,6 +43,9 @@ export class ElementPicker {
     this.removeOverlay();
     this.detachListeners();
     document.body.style.cursor = '';
+    if (this.targetIframe && this.targetDocument.body) {
+      this.targetDocument.body.style.cursor = '';
+    }
     this.currentHighlighted = null;
   }
 
@@ -64,18 +80,18 @@ export class ElementPicker {
    * Attach event listeners
    */
   private attachListeners(): void {
-    document.addEventListener('mouseover', this.handleMouseOver);
-    document.addEventListener('click', this.handleClick, true);
-    document.addEventListener('keydown', this.handleKeyDown);
+    this.targetDocument.addEventListener('mouseover', this.handleMouseOver);
+    this.targetDocument.addEventListener('click', this.handleClick, true);
+    this.targetDocument.addEventListener('keydown', this.handleKeyDown);
   }
 
   /**
    * Detach event listeners
    */
   private detachListeners(): void {
-    document.removeEventListener('mouseover', this.handleMouseOver);
-    document.removeEventListener('click', this.handleClick, true);
-    document.removeEventListener('keydown', this.handleKeyDown);
+    this.targetDocument.removeEventListener('mouseover', this.handleMouseOver);
+    this.targetDocument.removeEventListener('click', this.handleClick, true);
+    this.targetDocument.removeEventListener('keydown', this.handleKeyDown);
   }
 
   /**
@@ -142,11 +158,29 @@ export class ElementPicker {
     if (!this.overlay) return;
     
     const rect = element.getBoundingClientRect();
-    const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
-    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
     
-    this.overlay.style.left = `${rect.left + scrollLeft}px`;
-    this.overlay.style.top = `${rect.top + scrollTop}px`;
+    // Calculate position
+    let scrollLeft, scrollTop, top, left;
+    
+    if (this.targetIframe) {
+      // For iframe mode, position relative to main document
+      const iframeRect = this.targetIframe.getBoundingClientRect();
+      scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+      scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      
+      // Adjust coordinates to be relative to iframe in main document
+      left = rect.left + iframeRect.left + scrollLeft;
+      top = rect.top + iframeRect.top + scrollTop;
+    } else {
+      // For normal mode
+      scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+      scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      left = rect.left + scrollLeft;
+      top = rect.top + scrollTop;
+    }
+    
+    this.overlay.style.left = `${left}px`;
+    this.overlay.style.top = `${top}px`;
     this.overlay.style.width = `${rect.width}px`;
     this.overlay.style.height = `${rect.height}px`;
   }

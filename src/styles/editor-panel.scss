@@ -209,6 +209,39 @@ $panel-height-horizontal: 300px;
       padding: 6px;
     }
 
+    .viewport-mode-controls {
+      display: flex;
+      gap: 4px;
+      padding: 2px;
+      background: var(--editor-bg-muted);
+      border-radius: var(--editor-radius-sm);
+    }
+
+    .viewport-mode-btn {
+      background: transparent;
+      border: none;
+      color: var(--editor-text-muted);
+      font-size: 16px;
+      cursor: pointer;
+      padding: 4px 8px;
+      height: 28px;
+      border-radius: var(--editor-radius-xs);
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      &:hover {
+        background: var(--editor-bg);
+        color: var(--editor-text);
+      }
+
+      &.active {
+        background: var(--editor-accent);
+        color: white;
+      }
+    }
+
     .anchor-select,
     .locale-select {
       background: var(--editor-bg);

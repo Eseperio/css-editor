@@ -15,6 +15,11 @@ import { setLocale, t, translateProperty, translatePropertyGroup, Locale, getLoc
 import './styles/editor-panel.scss';
 
 /**
+ * Viewport mode for responsive design
+ */
+export type ViewportMode = 'desktop' | 'tablet' | 'phone';
+
+/**
  * CSS Editor Panel Interface
  */
 export interface CSSEditorOptions {
@@ -35,6 +40,15 @@ export interface CSSEditorOptions {
     clear?: { label?: string; visible?: boolean };
   };
   showGeneratedCSS?: boolean; // Task 7: Option to hide generated CSS panel
+  // Iframe mode options
+  iframeMode?: {
+    url: string; // URL to load in iframe
+    viewportSizes?: {
+      desktop?: number;
+      tablet?: number;
+      phone?: number;
+    };
+  };
 }
 
 /**
@@ -73,6 +87,10 @@ export class CSSEditorPanel {
   private selectorConfigExpanded: boolean = false;
   // Task 5: Hover highlight overlays for selector
   private highlightOverlays: HTMLElement[] = [];
+  // Viewport mode for responsive design
+  private viewportMode: ViewportMode = 'desktop';
+  // Target document (main document or iframe document)
+  private targetDocument: Document = document;
 
   constructor(options: CSSEditorOptions = {}) {
     this.options = options;
@@ -89,6 +107,61 @@ export class CSSEditorPanel {
     if (savedTheme) {
       this.theme = savedTheme;
     }
+  }
+
+  /**
+   * Set the target document for the editor (main document or iframe document)
+   */
+  public setTargetDocument(doc: Document): void {
+    this.targetDocument = doc;
+    
+    // Move or recreate the style element in the target document
+    // First check if a style element already exists in the target document
+    const existingStyle = this.targetDocument.getElementById('css-editor-dynamic-styles') as HTMLStyleElement;
+    if (existingStyle) {
+      this.styleElement = existingStyle;
+    } else {
+      // Create new style element in target document
+      const newStyleElement = this.targetDocument.createElement('style');
+      newStyleElement.id = 'css-editor-dynamic-styles';
+      this.targetDocument.head.appendChild(newStyleElement);
+      
+      // Copy content from old style element
+      if (this.styleElement) {
+        newStyleElement.textContent = this.styleElement.textContent;
+      }
+      
+      this.styleElement = newStyleElement;
+    }
+  }
+
+  /**
+   * Set viewport mode
+   */
+  public setViewportMode(mode: ViewportMode): void {
+    this.viewportMode = mode;
+    // Update viewport mode buttons if panel exists
+    if (this.panel) {
+      const buttons = this.panel.querySelectorAll('.viewport-mode-btn');
+      buttons.forEach(btn => {
+        const btnMode = (btn as HTMLElement).dataset.mode;
+        if (btnMode === mode) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+    }
+    // Re-apply styles to update media queries
+    this.applyStyles();
+    this.updatePreview();
+  }
+
+  /**
+   * Get current viewport mode
+   */
+  public getViewportMode(): ViewportMode {
+    return this.viewportMode;
   }
 
   /**
@@ -166,7 +239,7 @@ export class CSSEditorPanel {
    */
   private loadCurrentStyles(element: Element): void {
     this.currentStyles.clear();
-    const computed = window.getComputedStyle(element);
+    const computed = this.targetDocument.defaultView?.getComputedStyle(element) || window.getComputedStyle(element);
     
     // Load all CSS properties
     const allProperties: string[] = [];
@@ -204,6 +277,13 @@ export class CSSEditorPanel {
           <button class="theme-toggle" title="Toggle theme">
             <span class="theme-icon">${this.theme === 'dark' ? '☀️' : '🌙'}</span>
           </button>
+          ${this.options.iframeMode ? `
+          <div class="viewport-mode-controls">
+            <button class="viewport-mode-btn ${this.viewportMode === 'desktop' ? 'active' : ''}" data-mode="desktop" title="Desktop view">🖥️</button>
+            <button class="viewport-mode-btn ${this.viewportMode === 'tablet' ? 'active' : ''}" data-mode="tablet" title="Tablet view">📱</button>
+            <button class="viewport-mode-btn ${this.viewportMode === 'phone' ? 'active' : ''}" data-mode="phone" title="Phone view">📱</button>
+          </div>
+          ` : ''}
           <select class="locale-select" title="${t('ui.panel.language')}">
             ${localeOptions}
           </select>
@@ -357,6 +437,22 @@ export class CSSEditorPanel {
       selectorInput.addEventListener('mouseenter', () => this.highlightMatchingElements(this.currentSelector));
       selectorInput.addEventListener('mouseleave', () => this.removeHighlights());
     }
+
+    // Viewport mode buttons
+    if (this.options.iframeMode) {
+      const viewportButtons = this.panel.querySelectorAll('.viewport-mode-btn');
+      viewportButtons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const mode = (e.target as HTMLElement).dataset.mode as ViewportMode;
+          if (mode) {
+            this.setViewportMode(mode);
+            // Notify parent CSSEditor to update iframe size
+            const event = new CustomEvent('viewportModeChange', { detail: { mode } });
+            window.dispatchEvent(event);
+          }
+        });
+      });
+    }
   }
 
   /**
@@ -373,7 +469,7 @@ export class CSSEditorPanel {
     if (selectorCount) {
       let count = 0;
       try {
-        count = this.currentSelector ? document.querySelectorAll(this.currentSelector).length : 0;
+        count = this.currentSelector ? this.targetDocument.querySelectorAll(this.currentSelector).length : 0;
       } catch {
         count = 0;
       }
@@ -1329,7 +1425,34 @@ export class CSSEditorPanel {
       }
     });
     
-    return cssBlocks.join('\n\n');
+    const cssContent = cssBlocks.join('\n\n');
+    
+    // Wrap in media query if in iframe mode and not desktop
+    if (this.options.iframeMode && this.viewportMode !== 'desktop') {
+      const mediaQuery = this.getMediaQueryForViewportMode(this.viewportMode);
+      return `${mediaQuery} {\n${cssContent.split('\n').map(line => line ? '  ' + line : line).join('\n')}\n}`;
+    }
+    
+    return cssContent;
+  }
+
+  /**
+   * Get media query string for viewport mode
+   */
+  private getMediaQueryForViewportMode(mode: ViewportMode): string {
+    const sizes = this.options.iframeMode?.viewportSizes || {
+      tablet: 768,
+      phone: 480
+    };
+    
+    switch (mode) {
+      case 'tablet':
+        return `@media (max-width: ${sizes.tablet || 768}px)`;
+      case 'phone':
+        return `@media (max-width: ${sizes.phone || 480}px)`;
+      default:
+        return '';
+    }
   }
 
   /**
@@ -1800,7 +1923,7 @@ export class CSSEditorPanel {
     const selectorCount = this.panel?.querySelector('.selector-count') as HTMLElement | null;
     if (selectorCount) {
       try {
-        const matches = document.querySelectorAll(this.currentSelector);
+        const matches = this.targetDocument.querySelectorAll(this.currentSelector);
         const count = matches.length;
         
         if (count > 0) {
@@ -1824,16 +1947,31 @@ export class CSSEditorPanel {
     if (!selector) return;
     
     try {
-      const elements = document.querySelectorAll(selector);
+      const elements = this.targetDocument.querySelectorAll(selector);
       
       elements.forEach(element => {
         const rect = element.getBoundingClientRect();
         const overlay = document.createElement('div');
         overlay.className = 'css-editor-selector-highlight';
+        
+        // Calculate position relative to viewport
+        // For iframes, we need to adjust for iframe position
+        let top = rect.top;
+        let left = rect.left;
+        
+        if (this.options.iframeMode) {
+          const iframe = document.querySelector('#css-editor-iframe') as HTMLIFrameElement;
+          if (iframe) {
+            const iframeRect = iframe.getBoundingClientRect();
+            top += iframeRect.top;
+            left += iframeRect.left;
+          }
+        }
+        
         overlay.style.cssText = `
           position: fixed;
-          top: ${rect.top}px;
-          left: ${rect.left}px;
+          top: ${top}px;
+          left: ${left}px;
           width: ${rect.width}px;
           height: ${rect.height}px;
           background: rgba(255, 235, 59, 0.3);
