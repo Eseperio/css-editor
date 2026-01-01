@@ -30,3 +30,6 @@
   moment (so user can identify which variable is being used). On the right side of that box of name and value, a
   clickable cross icon will appear, so user can click on it to remove the variable and set back fixed value, which will
   be the current value of that variable, and the inputs will appear again for changing it.
+- [ ] Add a new panel for managing css variables. In that panel, user can create, edit and delete (delete only those
+  created in this editor) css variables. Whenever a variable is edited, all properties using that variable must update
+  their displayed value accordingly. 
