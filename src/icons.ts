@@ -13,7 +13,14 @@ import {
   Plus,
   ChevronDown,
   ChevronRight,
-  AlertTriangle
+  AlertTriangle,
+  Languages,
+  MoveVertical,
+  MoveHorizontal,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUp,
+  ArrowDown
 } from 'lucide';
 
 /**
@@ -52,5 +59,12 @@ export const icons = {
   plus: Plus,
   chevronDown: ChevronDown,
   chevronRight: ChevronRight,
-  alertTriangle: AlertTriangle
+  alertTriangle: AlertTriangle,
+  languages: Languages,
+  moveVertical: MoveVertical,
+  moveHorizontal: MoveHorizontal,
+  arrowLeft: ArrowLeft,
+  arrowRight: ArrowRight,
+  arrowUp: ArrowUp,
+  arrowDown: ArrowDown
 };

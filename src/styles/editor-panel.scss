@@ -260,6 +260,73 @@ $panel-height-horizontal: 300px;
       padding: 6px;
     }
 
+    // Roadmap Task 3: Config dropdown styles
+    .config-dropdown {
+      position: relative;
+      
+      .config-dropdown-trigger {
+        background: var(--editor-bg);
+        border: 1px solid var(--editor-border);
+        color: var(--editor-text);
+        font-size: 16px;
+        cursor: pointer;
+        padding: 6px 10px;
+        height: 32px;
+        width: 32px;
+        line-height: 1;
+        border-radius: var(--editor-radius-sm);
+        transition: background 0.15s, border-color 0.15s, color 0.15s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        &:hover {
+          background: var(--editor-bg-muted);
+          border-color: var(--editor-border-strong);
+        }
+      }
+
+      .config-dropdown-content {
+        position: absolute;
+        top: calc(100% + 4px);
+        right: 0;
+        background: var(--editor-bg);
+        border: 1px solid var(--editor-border);
+        color: var(--editor-text);
+        font-size: 12px;
+        padding: 6px 8px;
+        border-radius: var(--editor-radius-sm);
+        cursor: pointer;
+        min-width: 120px;
+        box-shadow: var(--editor-shadow);
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(-4px);
+        transition: opacity 0.15s, transform 0.15s;
+        z-index: 1000;
+
+        &:focus {
+          outline: none;
+          border-color: var(--editor-input-focus);
+          box-shadow: 0 0 0 1px var(--editor-input-focus);
+        }
+      }
+
+      &.open .config-dropdown-content {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateY(0);
+      }
+
+      &.anchor-dropdown .config-dropdown-content {
+        min-width: 100px;
+      }
+
+      &.locale-dropdown .config-dropdown-content {
+        min-width: 150px;
+      }
+    }
+
     .viewport-mode-controls {
       display: flex;
       gap: 4px;
@@ -290,25 +357,6 @@ $panel-height-horizontal: 300px;
       &.active {
         background: var(--editor-accent);
         color: white;
-      }
-    }
-
-    .anchor-select,
-    .locale-select {
-      background: var(--editor-bg);
-      border: 1px solid var(--editor-border);
-      color: var(--editor-text);
-      font-size: 12px;
-      padding: 6px 8px;
-      height: 32px;
-      border-radius: var(--editor-radius-sm);
-      cursor: pointer;
-      min-width: 100px;
-
-      &:focus {
-        outline: none;
-        border-color: var(--editor-input-focus);
-        box-shadow: 0 0 0 1px var(--editor-input-focus);
       }
     }
   }

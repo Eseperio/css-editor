@@ -308,15 +308,21 @@ export class CSSEditorPanel {
             <button class="viewport-mode-btn ${this.viewportMode === 'phone' ? 'active' : ''}" data-mode="phone" title="Phone view">${getIconHTML(icons.smartphone)}</button>
           </div>
           ` : ''}
-          <select class="locale-select" title="${t('ui.panel.language')}">
-            ${localeOptions}
-          </select>
-          <select class="anchor-select" title="${t('ui.panel.anchorPosition')}">
-            <option value="right">${t('ui.panel.anchorRight')}</option>
-            <option value="bottom">${t('ui.panel.anchorBottom')}</option>
-            <option value="left">${t('ui.panel.anchorLeft')}</option>
-            <option value="top">${t('ui.panel.anchorTop')}</option>
-          </select>
+          <div class="config-dropdown locale-dropdown">
+            <button class="config-dropdown-trigger" title="${t('ui.panel.language')}">${getIconHTML(icons.languages)}</button>
+            <select class="locale-select config-dropdown-content">
+              ${localeOptions}
+            </select>
+          </div>
+          <div class="config-dropdown anchor-dropdown">
+            <button class="config-dropdown-trigger anchor-trigger" title="${t('ui.panel.anchorPosition')}">${this.getAnchorIcon()}</button>
+            <select class="anchor-select config-dropdown-content">
+              <option value="right">${t('ui.panel.anchorRight')}</option>
+              <option value="bottom">${t('ui.panel.anchorBottom')}</option>
+              <option value="left">${t('ui.panel.anchorLeft')}</option>
+              <option value="top">${t('ui.panel.anchorTop')}</option>
+            </select>
+          </div>
           <button class="css-editor-close" title="${t('ui.panel.close')}">${getIconHTML(icons.close)}</button>
         </div>
       </div>
@@ -412,12 +418,44 @@ export class CSSEditorPanel {
     const themeToggleBtn = this.panel.querySelector('.theme-toggle');
     themeToggleBtn?.addEventListener('click', () => this.toggleTheme());
 
+    // Roadmap Task 3: Config dropdown triggers
+    const configDropdowns = this.panel.querySelectorAll('.config-dropdown');
+    configDropdowns.forEach(dropdown => {
+      const trigger = dropdown.querySelector('.config-dropdown-trigger');
+      const content = dropdown.querySelector('.config-dropdown-content') as HTMLSelectElement;
+      
+      if (trigger && content) {
+        trigger.addEventListener('click', (e) => {
+          e.stopPropagation();
+          // Close other dropdowns
+          configDropdowns.forEach(d => {
+            if (d !== dropdown) d.classList.remove('open');
+          });
+          dropdown.classList.toggle('open');
+          if (dropdown.classList.contains('open')) {
+            content.focus();
+          }
+        });
+      }
+    });
+
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.config-dropdown')) {
+        configDropdowns.forEach(d => d.classList.remove('open'));
+      }
+    });
+
     // Locale selector
     const localeSelect = this.panel.querySelector('.locale-select') as HTMLSelectElement | null;
     if (localeSelect) {
       localeSelect.addEventListener('change', () => {
         const newLocale = localeSelect.value as Locale;
         this.changeLocale(newLocale);
+        // Close the dropdown after selection
+        const dropdown = localeSelect.closest('.config-dropdown');
+        dropdown?.classList.remove('open');
       });
     }
 
@@ -428,6 +466,9 @@ export class CSSEditorPanel {
       anchorSelect.addEventListener('change', () => {
         const value = anchorSelect.value as 'right' | 'left' | 'top' | 'bottom';
         this.setAnchorPosition(value);
+        // Close the dropdown after selection
+        const dropdown = anchorSelect.closest('.config-dropdown');
+        dropdown?.classList.remove('open');
       });
     }
 
@@ -543,6 +584,25 @@ export class CSSEditorPanel {
     const anchorSelect = this.panel.querySelector('.anchor-select') as HTMLSelectElement | null;
     if (anchorSelect) {
       anchorSelect.value = this.anchorPosition;
+    }
+    
+    // Update anchor icon
+    const anchorTrigger = this.panel.querySelector('.anchor-trigger');
+    if (anchorTrigger) {
+      anchorTrigger.innerHTML = this.getAnchorIcon();
+    }
+  }
+
+  /**
+   * Roadmap Task 3: Get the icon for current anchor position
+   */
+  private getAnchorIcon(): string {
+    switch (this.anchorPosition) {
+      case 'left': return getIconHTML(icons.arrowLeft);
+      case 'right': return getIconHTML(icons.arrowRight);
+      case 'top': return getIconHTML(icons.arrowUp);
+      case 'bottom': return getIconHTML(icons.arrowDown);
+      default: return getIconHTML(icons.arrowRight);
     }
   }
 

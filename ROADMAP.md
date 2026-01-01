@@ -1,7 +1,7 @@
 - [x] Allow changing the width (or height, depending on anchor) of sidebar by dragging its border (for each anchor is a
   different border). No more than 50% of screen size, no less than 350px.
 - [x] Use Lucide icons instead of emojis.
-- [ ] Use an icon for each config dropdown. When clicking the icon, it opens the dropdown. This reduces space used.
+- [x] Use an icon for each config dropdown. When clicking the icon, it opens the dropdown. This reduces space used.
 - [ ] Remove sliders from direct view, instead, whenever user clicks on a numeric value input, something like a popover
   appears over the input with the slider for changing the value. To make this easier, the slider must use values from
   numeric input attributes slider-min, slider-max, slider-step. Slider will be also logarithmic, but this logarithm is
