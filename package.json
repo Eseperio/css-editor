@@ -9,7 +9,7 @@
     "dev": "rollup -c -w",
     "test": "echo \"No tests yet\" && exit 0",
     "build:styles": "node scripts/build-styles.js",
-    "serve": "concurrently \"npm run dev\" \"node server.js\""
+    "serve": "npx concurrently \"npm run dev\" \"node server.js\""
   },
   "keywords": [
     "css",
