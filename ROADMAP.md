@@ -8,7 +8,7 @@
   defined based on min-max and step, meaning that if there are more than 100 steps between min and max, it will be
   logarithmic, otherwise linear. There may be cases where user can set a negative value, so logarithm must begin at 0,
   so it increases intensity when is far from 0 no matter negative or positive.
-- [ ] Responsive improvements:
+- [x] Responsive improvements:
     - For each property, right inline after the input (for numeric inputs, after the unit input) there will be an icon
       for choosing the media query for that property. When clicking on it, a dropdown will appear with option to choose
       between current media query selected in preview dropdown or all media queries (default).

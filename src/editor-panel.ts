@@ -22,6 +22,19 @@ import './styles/editor-panel.scss';
 export type ViewportMode = 'desktop' | 'tablet' | 'phone';
 
 /**
+ * Task 5: Media query context for properties
+ */
+export type MediaQueryContext = 'all' | ViewportMode;
+
+/**
+ * Task 5: Property with media query context
+ */
+interface PropertyMediaQuery {
+  value: string;
+  mediaQuery: MediaQueryContext;
+}
+
+/**
  * CSS Editor Panel Interface
  */
 export interface CSSEditorOptions {
@@ -105,6 +118,8 @@ export class CSSEditorPanel {
   private highlightOverlays: HTMLElement[] = [];
   // Viewport mode for responsive design
   private viewportMode: ViewportMode = 'desktop';
+  // Task 5: Media query storage per property
+  private propertyMediaQueries: Map<string, Map<string, MediaQueryContext>> = new Map(); // Map<selector, Map<property, context>>
   // Target document (main document or iframe document)
   private targetDocument: Document = document;
   // Resize handle state
@@ -777,6 +792,7 @@ export class CSSEditorPanel {
     this.attachSpacingToggleListeners();
     this.attachCompoundPropertyListeners();
     this.attachMultiValuePropertyListeners();
+    this.attachMediaQueryListeners();  // Task 5: Attach MQ listeners
   }
 
   /**
@@ -803,57 +819,137 @@ export class CSSEditorPanel {
     const isCustomValue = !!trimmedValue && !hasSuggestion;
     const translatedProp = translateProperty(prop);
     
+    // Task 5: Get media query context for this property
+    const mqContext = this.getPropertyMediaQueryContext(prop);
+    const mqIcon = this.renderMediaQueryIcon(prop, mqContext);
+    
     // If property has predefined suggestions (like display, position), use dropdown
     if (suggestions.length > 0) {
       return `
         <div class="css-property ${isModified ? 'active' : 'disabled'} ${isSpacingSide ? 'spacing-side' : ''}" data-property="${prop}">
           <label>${translatedProp}</label>
-          <select data-property="${prop}">
-            <option value="">${t('ui.inputs.selectOption')}</option>
-            ${suggestions.map(val => 
-              `<option value="${val}" ${trimmedValue === val ? 'selected' : ''}>${val}</option>`
-            ).join('')}
-            <option value="custom" ${isCustomValue ? 'selected' : ''}>${t('ui.inputs.customValue')}</option>
-          </select>
-          <input type="text" class="custom-property-input" data-property="${prop}" placeholder="${t('ui.inputs.enterCustomValue')}" value="${isCustomValue ? trimmedValue : ''}" ${isCustomValue ? '' : 'style="display:none;"'} />
+          <div class="property-input-with-mq">
+            <select data-property="${prop}">
+              <option value="">${t('ui.inputs.selectOption')}</option>
+              ${suggestions.map(val => 
+                `<option value="${val}" ${trimmedValue === val ? 'selected' : ''}>${val}</option>`
+              ).join('')}
+              <option value="custom" ${isCustomValue ? 'selected' : ''}>${t('ui.inputs.customValue')}</option>
+            </select>
+            <input type="text" class="custom-property-input" data-property="${prop}" placeholder="${t('ui.inputs.enterCustomValue')}" value="${isCustomValue ? trimmedValue : ''}" ${isCustomValue ? '' : 'style="display:none;"'} />
+            ${mqIcon}
+          </div>
         </div>
       `;
     } else if (inputType === 'color') {
       return `
         <div class="css-property ${isModified ? 'active' : 'disabled'} ${isSpacingSide ? 'spacing-side' : ''}" data-property="${prop}">
           <label>${translatedProp}</label>
-          ${createColorInput(prop, currentValue)}
+          <div class="property-input-with-mq">
+            ${createColorInput(prop, currentValue)}
+            ${mqIcon}
+          </div>
         </div>
       `;
     } else if (inputType === 'size') {
       return `
         <div class="css-property ${isModified ? 'active' : 'disabled'} ${isSpacingSide ? 'spacing-side' : ''}" data-property="${prop}">
           <label>${translatedProp}</label>
-          ${createSizeInput(prop, currentValue)}
+          <div class="property-input-with-mq">
+            ${createSizeInput(prop, currentValue)}
+            ${mqIcon}
+          </div>
         </div>
       `;
     } else if (inputType === 'filter') {
       return `
         <div class="css-property ${isModified ? 'active' : 'disabled'} ${isSpacingSide ? 'spacing-side' : ''}" data-property="${prop}">
           <label>${translatedProp}</label>
-          ${createFilterInput(prop, currentValue)}
+          <div class="property-input-with-mq">
+            ${createFilterInput(prop, currentValue)}
+            ${mqIcon}
+          </div>
         </div>
       `;
     } else if (inputType === 'number') {
       return `
         <div class="css-property ${isModified ? 'active' : 'disabled'} ${isSpacingSide ? 'spacing-side' : ''}" data-property="${prop}">
           <label>${translatedProp}</label>
-          ${createPercentageInput(prop, currentValue)}
+          <div class="property-input-with-mq">
+            ${createPercentageInput(prop, currentValue)}
+            ${mqIcon}
+          </div>
         </div>
       `;
     } else {
       return `
         <div class="css-property ${isModified ? 'active' : 'disabled'} ${isSpacingSide ? 'spacing-side' : ''}" data-property="${prop}">
           <label>${translatedProp}</label>
-          <input type="text" data-property="${prop}" value="${currentValue}" placeholder="${t('ui.inputs.enterValue')}" />
+          <div class="property-input-with-mq">
+            <input type="text" data-property="${prop}" value="${currentValue}" placeholder="${t('ui.inputs.enterValue')}" />
+            ${mqIcon}
+          </div>
         </div>
       `;
     }
+  }
+
+  /**
+   * Task 5: Get media query context for a property
+   */
+  private getPropertyMediaQueryContext(property: string): MediaQueryContext {
+    const selectorMQs = this.propertyMediaQueries.get(this.currentSelector);
+    if (!selectorMQs) return 'all';
+    return selectorMQs.get(property) || 'all';
+  }
+
+  /**
+   * Task 5: Render media query icon with indicators
+   */
+  private renderMediaQueryIcon(property: string, currentContext: MediaQueryContext): string {
+    const otherContexts = this.getOtherMediaQueryContexts(property);
+    const isContextSpecific = currentContext !== 'all';
+    const hasOtherContexts = otherContexts.length > 0;
+    
+    // Icon color based on state
+    const iconClass = isContextSpecific ? 'mq-icon-active' : 'mq-icon';
+    const otherIndicator = hasOtherContexts ? `<span class="mq-other-indicator" title="Customized for other media queries">${getIconHTML(icons.alertTriangle, 'mq-alert-icon')}</span>` : '';
+    
+    return `
+      <div class="media-query-selector">
+        <button class="mq-trigger ${iconClass}" data-property="${property}" title="Media query context">
+          ${getIconHTML(icons.layers)}
+        </button>
+        ${otherIndicator}
+        <div class="mq-dropdown" data-property="${property}" style="display: none;">
+          <button class="mq-option ${currentContext === 'all' ? 'selected' : ''}" data-mq="all" data-property="${property}">All (default)</button>
+          <button class="mq-option ${currentContext === 'desktop' ? 'selected' : ''}" data-mq="desktop" data-property="${property}">${getIconHTML(icons.monitor)} Desktop</button>
+          <button class="mq-option ${currentContext === 'tablet' ? 'selected' : ''}" data-mq="tablet" data-property="${property}">${getIconHTML(icons.tablet)} Tablet</button>
+          <button class="mq-option ${currentContext === 'phone' ? 'selected' : ''}" data-mq="phone" data-property="${property}">${getIconHTML(icons.smartphone)} Phone</button>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Task 5: Get other media query contexts where property is customized
+   */
+  private getOtherMediaQueryContexts(property: string): MediaQueryContext[] {
+    const selectorMQs = this.propertyMediaQueries.get(this.currentSelector);
+    if (!selectorMQs) return [];
+    
+    const contexts: MediaQueryContext[] = [];
+    const currentContext = selectorMQs.get(property) || 'all';
+    
+    // Check if property exists in other contexts
+    (['desktop', 'tablet', 'phone'] as ViewportMode[]).forEach(mode => {
+      // Check if there's a value for this property in this mode
+      if (mode !== currentContext && selectorMQs.has(`${property}@${mode}`)) {
+        contexts.push(mode);
+      }
+    });
+    
+    return contexts;
   }
 
   /**
@@ -1374,6 +1470,82 @@ export class CSSEditorPanel {
         this.handleShadowComponentChange(e);
       });
     });
+  }
+
+  /**
+   * Task 5: Attach media query selector listeners
+   */
+  private attachMediaQueryListeners(): void {
+    if (!this.panel) return;
+    
+    // MQ trigger buttons
+    const mqTriggers = this.panel.querySelectorAll('.mq-trigger');
+    mqTriggers.forEach(trigger => {
+      trigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const property = (trigger as HTMLElement).getAttribute('data-property');
+        if (!property) return;
+        
+        // Close other dropdowns
+        const allDropdowns = this.panel?.querySelectorAll('.mq-dropdown');
+        allDropdowns?.forEach(dropdown => {
+          const dropdownProp = (dropdown as HTMLElement).getAttribute('data-property');
+          if (dropdownProp !== property) {
+            (dropdown as HTMLElement).style.display = 'none';
+          }
+        });
+        
+        // Toggle this dropdown
+        const dropdown = this.panel?.querySelector(`.mq-dropdown[data-property="${property}"]`) as HTMLElement;
+        if (dropdown) {
+          dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+        }
+      });
+    });
+    
+    // MQ option buttons
+    const mqOptions = this.panel.querySelectorAll('.mq-option');
+    mqOptions.forEach(option => {
+      option.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const property = (option as HTMLElement).getAttribute('data-property');
+        const mqContext = (option as HTMLElement).getAttribute('data-mq') as MediaQueryContext;
+        if (!property || !mqContext) return;
+        
+        this.setPropertyMediaQueryContext(property, mqContext);
+        
+        // Close dropdown
+        const dropdown = this.panel?.querySelector(`.mq-dropdown[data-property="${property}"]`) as HTMLElement;
+        if (dropdown) {
+          dropdown.style.display = 'none';
+        }
+        
+        // Refresh UI to update indicators
+        this.renderCommonProperties();
+        this.renderAdvancedProperties();
+        this.attachMediaQueryListeners();
+      });
+    });
+    
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', () => {
+      const allDropdowns = this.panel?.querySelectorAll('.mq-dropdown');
+      allDropdowns?.forEach(dropdown => {
+        (dropdown as HTMLElement).style.display = 'none';
+      });
+    }, { once: true });
+  }
+
+  /**
+   * Task 5: Set media query context for a property
+   */
+  private setPropertyMediaQueryContext(property: string, context: MediaQueryContext): void {
+    let selectorMQs = this.propertyMediaQueries.get(this.currentSelector);
+    if (!selectorMQs) {
+      selectorMQs = new Map();
+      this.propertyMediaQueries.set(this.currentSelector, selectorMQs);
+    }
+    selectorMQs.set(property, context);
   }
 
   /**
@@ -2132,30 +2304,61 @@ export class CSSEditorPanel {
     }
     
     const cssBlocks: string[] = [];
+    const mediaQueryBlocks: Map<string, string[]> = new Map();
     
     this.allElementChanges.forEach((elementData, selector) => {
-      const properties = Array.from(elementData.modifiedProperties)
-        .map(prop => {
-          const value = elementData.styles.get(prop);
-          return value ? `  ${prop}: ${value};` : null;
-        })
-        .filter(line => line !== null)
-        .join('\n');
+      // Task 5: Separate properties by media query context
+      const baseProperties: string[] = [];
+      const mqProperties: Map<MediaQueryContext, string[]> = new Map();
       
-      if (properties) {
-        cssBlocks.push(`${selector} {\n${properties}\n}`);
+      const selectorMQs = this.propertyMediaQueries.get(selector);
+      
+      Array.from(elementData.modifiedProperties).forEach(prop => {
+        const value = elementData.styles.get(prop);
+        if (!value) return;
+        
+        const context = selectorMQs?.get(prop) || 'all';
+        const cssLine = `  ${prop}: ${value};`;
+        
+        if (context === 'all') {
+          baseProperties.push(cssLine);
+        } else {
+          if (!mqProperties.has(context)) {
+            mqProperties.set(context, []);
+          }
+          mqProperties.get(context)!.push(cssLine);
+        }
+      });
+      
+      // Add base properties block
+      if (baseProperties.length > 0) {
+        cssBlocks.push(`${selector} {\n${baseProperties.join('\n')}\n}`);
+      }
+      
+      // Add media query specific blocks
+      mqProperties.forEach((properties, context) => {
+        if (properties.length > 0) {
+          const mqString = this.getMediaQueryForViewportMode(context as ViewportMode);
+          if (!mediaQueryBlocks.has(mqString)) {
+            mediaQueryBlocks.set(mqString, []);
+          }
+          mediaQueryBlocks.get(mqString)!.push(`${selector} {\n${properties.join('\n')}\n}`);
+        }
+      });
+    });
+    
+    // Combine all CSS
+    let css = cssBlocks.join('\n\n');
+    
+    // Add media query blocks
+    mediaQueryBlocks.forEach((blocks, mqString) => {
+      if (blocks.length > 0) {
+        const mqContent = blocks.join('\n\n');
+        css += `\n\n${mqString} {\n${mqContent.split('\n').map(line => line ? '  ' + line : line).join('\n')}\n}`;
       }
     });
     
-    const cssContent = cssBlocks.join('\n\n');
-    
-    // Wrap in media query if in iframe mode and not desktop
-    if (this.options.iframeMode && this.viewportMode !== 'desktop') {
-      const mediaQuery = this.getMediaQueryForViewportMode(this.viewportMode);
-      return `${mediaQuery} {\n${cssContent.split('\n').map(line => line ? '  ' + line : line).join('\n')}\n}`;
-    }
-    
-    return cssContent;
+    return css;
   }
 
   /**

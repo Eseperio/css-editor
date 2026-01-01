@@ -530,6 +530,101 @@ $panel-height-horizontal: 300px;
       }
     }
 
+    // Task 5: Media query selector styles
+    .property-input-with-mq {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .media-query-selector {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      
+      .mq-trigger {
+        background: transparent;
+        border: none;
+        color: var(--editor-text-muted);
+        cursor: pointer;
+        padding: 4px;
+        border-radius: var(--editor-radius-xs);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.15s, color 0.15s;
+        
+        &:hover {
+          background: var(--editor-bg-muted);
+          color: var(--editor-text);
+        }
+        
+        &.mq-icon-active {
+          color: #ff9800; // Orange for active media query
+          
+          &:hover {
+            color: #f57c00;
+          }
+        }
+      }
+      
+      .mq-other-indicator {
+        display: flex;
+        align-items: center;
+        
+        .mq-alert-icon {
+          color: #f44336; // Red for other MQ customizations
+          width: 14px;
+          height: 14px;
+        }
+      }
+      
+      .mq-dropdown {
+        position: absolute;
+        top: calc(100% + 4px);
+        right: 0;
+        background: var(--editor-bg-elevated);
+        border: 1px solid var(--editor-border);
+        border-radius: var(--editor-radius-sm);
+        box-shadow: var(--editor-shadow-lg);
+        z-index: 10003;
+        min-width: 160px;
+        padding: 4px;
+        
+        .mq-option {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 12px;
+          background: transparent;
+          border: none;
+          border-radius: var(--editor-radius-xs);
+          cursor: pointer;
+          color: var(--editor-text);
+          font-size: 12px;
+          text-align: left;
+          transition: background 0.15s;
+          
+          svg {
+            width: 14px;
+            height: 14px;
+          }
+          
+          &:hover {
+            background: var(--editor-bg-muted);
+          }
+          
+          &.selected {
+            background: var(--editor-accent-light);
+            color: var(--editor-accent);
+            font-weight: 500;
+          }
+        }
+      }
+    }
+
     .property-group {
       margin-bottom: 12px;
       background: var(--editor-bg-elevated);

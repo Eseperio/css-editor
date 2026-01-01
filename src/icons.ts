@@ -20,7 +20,8 @@ import {
   ArrowLeft,
   ArrowRight,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  Layers
 } from 'lucide';
 
 // In this package build, each icon is exported as an IconNode:
@@ -93,5 +94,6 @@ export const icons = {
   arrowLeft: ArrowLeft,
   arrowRight: ArrowRight,
   arrowUp: ArrowUp,
-  arrowDown: ArrowDown
+  arrowDown: ArrowDown,
+  layers: Layers  // Task 5: Media query icon
 };
