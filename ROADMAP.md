@@ -1,35 +1,32 @@
-- [x] Allow users to define a custom element to activate item selector providing a css selector.
-- [x] Instead of color palett icon and floating button, for default use a fixed small dark bar on top with text "Press
-  here to enter style editor", then, legend changes to "Click any element to edit its styles"
-- [x] Keep all css changes. All changes made to different elements should be kept in memory, so when user customizes a
-  second element, the first one keeps its changes. And css generated includes all changes made to all elements.
-- [x] Improve the selector configuration. Now the selector is calculated automatically, but it may be too specific or
-  too generic. Right to selector input label there must be a cog. Once pressed, a panel appears below the input with a
-  list of containers, each one with a piece of the selector, and in between, a vertical line joining them in the middle,
-  like a diagram. At the right side of that line there is a compact dropdown with options: "children" or "all
-  descendants". This represents the joint between those parts, currently supporting > or a space. For each container
-  representing a part of the selector, there is also a dropdown at its right side with options: "all", "even","odd" and
-  then options like "only position 1", "only position 2", etc, up to the number of siblings of that type. This allows to
-  refine the selector to avoid overbroad or overspecific selectors. Changes on this configuration update the selector
-  input, and therefore the css rules generated.
-- [x] When user hovers the selector input, highlight the element(s) matching that selector in the page with the blue
-  overlay.
-- [x] Margin items overflow because they are in a subpanel. Fix it.
-- [x] Allow to customize the action buttons in panel by changing labels, toggle visibility of each one, also ability to
-  hide generated panel
-- [x] Add some kind of subpanel (may be simply a rectangle without border but slightly dark background) for each
-  advanced rule.
-- [x] Ensure that the options already available in groups are not repeated in advanced panel.
-- [x] The border properties can be defined independently for each side, so we need to do something like with padding
-  and margin, to allow user to define different values for each side.
-- [x] There are still many properties in advanced panel that can be added to main groups. Review them and add the most
-  useful ones.
-- [x] There are a set of properties that are dependant on others, like align-items that only makes sense if display is
-  flex or grid. We should hide or disable those properties when they don't make sense. Also those properties must be in
-  same panel. So whenever a user changes display to flex, the flex properties appear in the same panel.
-- [ ] Add ability to define different values for different breakpoints (responsive design). For example, margin can be
-  defined as 10px for desktop, 5px for tablet and 2px for mobile. This can be done by adding a small icon next to the
-  property label representing a screen (desktop, tablet, mobile). Once clicked, a small popup appears allowing to set
-  different values for each breakpoint. The generated css must include media queries for those breakpoints.
-- [ ] Add ability to predefine a set of breakpoints, with names and widths, so user can choose between them when
-  defining responsive properties.
+- [ ] Allow changing the width (or height, depends of anchor) of sidebar by dragging its border (for each anchor is a
+  different border). No more than 50% of screen size, no less than 350px.
+- [ ] Use Lucide icons instead of emojis.
+- [ ] Use an icon for each config dropdown. When clicking the icon, it opens the dropdown. This reduces space used.
+- [ ] Remove sliders from direct view, instead, whenever user clicks on a numeric value input, something like a popover
+  appears over the input with the slider for changing the value. To make this easier, the slider must use values from
+  numeric input attributes slider-min, slider-max, slider-step. Slider will be also logarithmic, but this logarithm is
+  defined based on min-max and step, meaning that if there are more than 100 steps between min and max, it will be
+  logarithmic, otherwise linear. There may be cases where user can set a negative value, so logarithm must begin at 0,
+  so it increases intensity when is far from 0 no matter negative or positive.
+- [ ] Responsive improvements:
+    - For each property, right inline after the input (for numeric inputs, after the unit input) there will be an icon
+      for choosing the media query for that property. When clicking on it, a dropdown will appear with option to choose
+      between current media query selected in preview dropdown or all media queries (default).
+      If user selects current media query, the property will be applied only for that media query, and the icon will be
+      instead of light-gray, light orange, as a sign that property is media-query specific. When user changes the
+      preview size, editor must show all the properties that has not been customized for that media query as they do
+      when they have not been customized, where they look like semi-transparent. But an additional icon will be added
+      inline to the one for choosing context to apply the rule, this time with a light red color and the icon of that
+      media query, and a tooltip saying
+      that property has been customized for that media query. This way, when user changes preview, it changes context of
+      css editor, where it can still change all the properties modified in other previews that are not specific for a
+      media query, while at the same time can identify which properties have been customized for other media queries. So
+      user does not miss when a property is going to behave differently in other media queries.
+- [ ] Implement support for css native variables. Just inline, after each property name, there will be an icon. When
+  user clicks on it, a popover appears with a list of all css variables defined in :root selector. User can choose one
+  of them, and the value of the property will be set to that variable, instead of a fixed value. The icon will change to
+  light blue as a sign that property is using a css variable and inputs for that property will be hidden, showing
+  instead the name of variable used, and below it, in small light gray text, the actual value of that variable at that
+  moment (so user can identify which variable is being used). On the right side of that box of name and value, a
+  clickable cross icon will appear, so user can click on it to remove the variable and set back fixed value, which will
+  be the current value of that variable, and the inputs will appear again for changing it.
