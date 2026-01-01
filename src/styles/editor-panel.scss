@@ -744,9 +744,41 @@ $panel-height-horizontal: 300px;
 
     .size-input-group {
       display: grid;
-      grid-template-columns: 1fr auto auto;
+      grid-template-columns: auto auto;
       gap: 6px;
       align-items: center;
+      position: relative;
+    }
+
+    // Task 4: Slider popover styles
+    .slider-popover {
+      position: absolute;
+      background: var(--editor-bg-elevated);
+      border: 1px solid var(--editor-border);
+      border-radius: var(--editor-radius-sm);
+      padding: 12px;
+      box-shadow: var(--editor-shadow-lg);
+      z-index: 10002;
+      min-width: 220px;
+      
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      
+      .size-slider,
+      .percentage-slider {
+        width: 100%;
+      }
+      
+      .slider-value-display {
+        text-align: center;
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--editor-accent);
+        padding: 4px;
+        background: var(--editor-accent-light);
+        border-radius: var(--editor-radius-xs);
+      }
     }
 
     .size-slider {
@@ -798,6 +830,11 @@ $panel-height-horizontal: 300px;
       background: var(--editor-input-bg);
       border: 1px solid var(--editor-input-border);
       color: var(--editor-text);
+      cursor: pointer; // Task 4: Indicate clickable for popover
+      
+      &:hover {
+        border-color: var(--editor-accent);
+      };
       border-radius: var(--editor-radius-sm);
       font-size: 12px;
       text-align: center;
@@ -829,9 +866,10 @@ $panel-height-horizontal: 300px;
 
     .percentage-input-group {
       display: grid;
-      grid-template-columns: 1fr auto auto;
+      grid-template-columns: auto auto;
       gap: 6px;
       align-items: center;
+      position: relative;
     }
 
     .percentage-slider {
@@ -887,6 +925,11 @@ $panel-height-horizontal: 300px;
       font-size: 12px;
       text-align: center;
       transition: border-color 0.15s, box-shadow 0.15s;
+      cursor: pointer; // Task 4: Indicate clickable for popover
+
+      &:hover {
+        border-color: var(--editor-accent);
+      }
 
       &:focus {
         outline: none;
@@ -895,10 +938,10 @@ $panel-height-horizontal: 300px;
       }
     }
 
-    .percentage-label {
+    .percentage-unit {
       color: var(--editor-text-subtle);
-      font-size: 11px;
-      min-width: 50px;
+      font-size: 12px;
+      min-width: 20px;
     }
 
     .size-number-input::-webkit-inner-spin-button,

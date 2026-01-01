@@ -1748,42 +1748,70 @@ export class CSSEditorPanel {
         target.addEventListener('input', () => {
           this.updateProperty(property, target.value);
         });
+      } else if (target.classList.contains('size-number-input')) {
+        // Task 4: Handle size number input - show popover on click
+        target.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.showSliderPopover(property, target as HTMLInputElement, container as HTMLElement);
+        });
+        target.addEventListener('input', () => {
+          const slider = container.querySelector(`.size-slider[data-property="${property}"]`) as HTMLInputElement;
+          const valueDisplay = container.querySelector(`.slider-popover[data-property="${property}"] .slider-value-display`) as HTMLElement;
+          const numeric = parseFloat((target as HTMLInputElement).value);
+          if (slider && !Number.isNaN(numeric)) {
+            slider.value = mapValueToSizeSlider(numeric).toString();
+            if (valueDisplay) {
+              valueDisplay.textContent = numeric.toString();
+            }
+          }
+          this.handleSizeInputChange(property);
+        });
       } else if (target.classList.contains('size-slider')) {
-        // Handle size slider (non-linear mapping)
+        // Task 4: Handle size slider in popover
         target.addEventListener('input', () => {
           const numberInput = container.querySelector(`.size-number-input[data-property="${property}"]`) as HTMLInputElement;
+          const valueDisplay = container.querySelector(`.slider-popover[data-property="${property}"] .slider-value-display`) as HTMLElement;
           const sliderVal = parseFloat((target as HTMLInputElement).value);
           const mappedValue = mapSizeSliderToValue(sliderVal);
           if (numberInput) {
             numberInput.value = mappedValue.toString();
           }
-          this.handleSizeInputChange(property);
-        });
-      } else if (target.classList.contains('size-number-input')) {
-        // Handle size number input
-        target.addEventListener('input', () => {
-          const slider = container.querySelector(`.size-slider[data-property="${property}"]`) as HTMLInputElement;
-          const numeric = parseFloat((target as HTMLInputElement).value);
-          if (slider && !Number.isNaN(numeric)) {
-            slider.value = mapValueToSizeSlider(numeric).toString();
+          if (valueDisplay) {
+            valueDisplay.textContent = mappedValue.toString();
           }
           this.handleSizeInputChange(property);
         });
-      } else if (target.classList.contains('percentage-slider')) {
-        // Handle percentage slider
+      } else if (target.classList.contains('percentage-number-input')) {
+        // Task 4: Handle percentage number input - show popover on click
+        target.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.showSliderPopover(property, target as HTMLInputElement, container as HTMLElement);
+        });
         target.addEventListener('input', () => {
-          const numberInput = container.querySelector(`.percentage-number-input[data-property="${property}"]`) as HTMLInputElement;
-          if (numberInput) {
-            numberInput.value = target.value;
+          const slider = container.querySelector(`.percentage-slider[data-property="${property}"]`) as HTMLInputElement;
+          const valueDisplay = container.querySelector(`.slider-popover[data-property="${property}"] .slider-value-display`) as HTMLElement;
+          if (slider) {
+            slider.value = target.value;
+          }
+          if (valueDisplay) {
+            const numValue = parseFloat(target.value);
+            const isOpacity = property === 'opacity';
+            valueDisplay.textContent = isOpacity ? `${(numValue * 100).toFixed(0)}%` : numValue.toFixed(1);
           }
           this.updateProperty(property, target.value);
         });
-      } else if (target.classList.contains('percentage-number-input')) {
-        // Handle percentage number input
+      } else if (target.classList.contains('percentage-slider')) {
+        // Task 4: Handle percentage slider in popover
         target.addEventListener('input', () => {
-          const slider = container.querySelector(`.percentage-slider[data-property="${property}"]`) as HTMLInputElement;
-          if (slider) {
-            slider.value = target.value;
+          const numberInput = container.querySelector(`.percentage-number-input[data-property="${property}"]`) as HTMLInputElement;
+          const valueDisplay = container.querySelector(`.slider-popover[data-property="${property}"] .slider-value-display`) as HTMLElement;
+          if (numberInput) {
+            numberInput.value = target.value;
+          }
+          if (valueDisplay) {
+            const numValue = parseFloat(target.value);
+            const isOpacity = property === 'opacity';
+            valueDisplay.textContent = isOpacity ? `${(numValue * 100).toFixed(0)}%` : numValue.toFixed(1);
           }
           this.updateProperty(property, target.value);
         });
@@ -2744,6 +2772,51 @@ export class CSSEditorPanel {
       case 'export': return t('ui.panel.exportCSS');
       case 'clear': return t('ui.panel.clearChanges');
     }
+  }
+
+  /**
+   * Task 4: Show slider popover when clicking numeric input
+   */
+  private showSliderPopover(property: string, input: HTMLInputElement, container: HTMLElement): void {
+    // Close any other open popovers
+    const allPopovers = document.querySelectorAll('.slider-popover');
+    allPopovers.forEach(p => {
+      if (p.getAttribute('data-property') !== property) {
+        (p as HTMLElement).style.display = 'none';
+      }
+    });
+    
+    const popover = container.querySelector(`.slider-popover[data-property="${property}"]`) as HTMLElement;
+    if (!popover) return;
+    
+    // Toggle popover
+    if (popover.style.display === 'none' || popover.style.display === '') {
+      popover.style.display = 'block';
+      
+      // Position popover above the input
+      const inputRect = input.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+      popover.style.position = 'absolute';
+      popover.style.top = `${inputRect.top - containerRect.top - popover.offsetHeight - 5}px`;
+      popover.style.left = `${inputRect.left - containerRect.left}px`;
+      
+      // Add click outside listener to close
+      setTimeout(() => {
+        document.addEventListener('click', this.closeSliderPopovers.bind(this), { once: true });
+      }, 0);
+    } else {
+      popover.style.display = 'none';
+    }
+  }
+
+  /**
+   * Task 4: Close all slider popovers
+   */
+  private closeSliderPopovers(): void {
+    const allPopovers = document.querySelectorAll('.slider-popover');
+    allPopovers.forEach(p => {
+      (p as HTMLElement).style.display = 'none';
+    });
   }
 
   /**

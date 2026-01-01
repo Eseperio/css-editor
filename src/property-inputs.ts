@@ -179,34 +179,48 @@ export function createColorInput(property: string, value: string): string {
 }
 
 /**
- * Create a size input control with slider and unit selector
+ * Create a size input control with slider in popover (Task 4)
+ * Slider now appears in a popover when clicking the numeric input
  */
 export function createSizeInput(property: string, value: string): string {
   const parsed = parseCSSValue(value);
   const maxValue = property.includes('radius') ? 100 : 500;
   const sliderValue = mapValueToSizeSlider(parsed.number);
   
+  // Determine if logarithmic scaling is needed based on range
+  const minVal = 0;
+  const maxVal = maxValue;
+  const steps = (maxVal - minVal) / 1;
+  const useLogarithmic = steps > 100;
+  
   return `
     <div class="property-input-group size-input-group">
-      <input type="range" 
-             class="size-slider" 
-             data-property="${property}"
-             min="0" 
-             max="100" 
-             step="0.1"
-             value="${sliderValue}" 
-             title="${t('ui.inputs.adjustValue')}" />
       <input type="number" 
              class="size-number-input" 
              data-property="${property}"
+             data-slider-min="${minVal}"
+             data-slider-max="${maxVal}"
+             data-slider-step="1"
+             data-use-logarithmic="${useLogarithmic}"
              value="${parsed.number}" 
              step="1"
-             min="0" />
+             min="${minVal < 0 ? minVal : 0}"
+             title="${t('ui.inputs.clickForSlider')}" />
       <select class="size-unit-selector" data-property="${property}">
         ${CSS_UNITS.map(unit => 
           `<option value="${unit}" ${parsed.unit === unit ? 'selected' : ''}>${unit}</option>`
         ).join('')}
       </select>
+      <div class="slider-popover" data-property="${property}" style="display: none;">
+        <input type="range" 
+               class="size-slider" 
+               data-property="${property}"
+               min="0" 
+               max="100" 
+               step="0.1"
+               value="${sliderValue}" />
+        <span class="slider-value-display">${parsed.number}</span>
+      </div>
     </div>
   `;
 }
@@ -339,7 +353,7 @@ export function mapValueToSizeSlider(value: number): number {
 }
 
 /**
- * Create a percentage/decimal input control with slider
+ * Create a percentage/decimal input control with slider in popover (Task 4)
  */
 export function createPercentageInput(property: string, value: string): string {
   const numValue = parseFloat(value) || 0;
@@ -350,22 +364,76 @@ export function createPercentageInput(property: string, value: string): string {
   
   return `
     <div class="property-input-group percentage-input-group">
-      <input type="range" 
-             class="percentage-slider" 
-             data-property="${property}"
-             min="0" 
-             max="${max}" 
-             step="${step}"
-             value="${numValue}" 
-             title="${t('ui.inputs.adjustValue')}" />
       <input type="number" 
              class="percentage-number-input" 
              data-property="${property}"
+             data-slider-min="0"
+             data-slider-max="${max}"
+             data-slider-step="${step}"
              value="${numValue}" 
              step="${step}"
              min="0"
-             max="${max}" />
-      <span class="percentage-label">${isOpacity ? `(${displayValue}%)` : ''}</span>
+             max="${max}"
+             title="${t('ui.inputs.clickForSlider')}" />
+      <span class="percentage-unit">${isOpacity ? '%' : ''}</span>
+      <div class="slider-popover" data-property="${property}" style="display: none;">
+        <input type="range" 
+               class="percentage-slider" 
+               data-property="${property}"
+               min="0" 
+               max="${max}" 
+               step="${step}"
+               value="${numValue}" />
+        <span class="slider-value-display">${displayValue}${isOpacity ? '%' : ''}</span>
+      </div>
     </div>
   `;
+}
+
+/**
+ * Task 4: Logarithmic scaling for sliders with large ranges
+ * Handles negative values by treating 0 as the center point
+ */
+export function logarithmicScale(value: number, min: number, max: number, steps: number): number {
+  // If range allows negative values, split scaling around 0
+  if (min < 0 && max > 0) {
+    if (value < 0) {
+      // Negative side: scale from min to 0
+      const absMin = Math.abs(min);
+      const absValue = Math.abs(value);
+      const ratio = Math.log(absValue + 1) / Math.log(absMin + 1);
+      return ratio * 50; // 0-50 for negative range
+    } else {
+      // Positive side: scale from 0 to max
+      const ratio = Math.log(value + 1) / Math.log(max + 1);
+      return 50 + ratio * 50; // 50-100 for positive range
+    }
+  }
+  
+  // Standard logarithmic scaling for positive-only ranges
+  const ratio = Math.log(value - min + 1) / Math.log(max - min + 1);
+  return ratio * 100;
+}
+
+/**
+ * Task 4: Inverse logarithmic scaling
+ */
+export function inverseLogarithmicScale(position: number, min: number, max: number, steps: number): number {
+  if (min < 0 && max > 0) {
+    if (position < 50) {
+      // Negative side
+      const absMin = Math.abs(min);
+      const ratio = position / 50;
+      const absValue = Math.pow(absMin + 1, ratio) - 1;
+      return -absValue;
+    } else {
+      // Positive side
+      const ratio = (position - 50) / 50;
+      return Math.pow(max + 1, ratio) - 1;
+    }
+  }
+  
+  // Standard inverse
+  const ratio = position / 100;
+  return Math.pow(max - min + 1, ratio) - 1 + min;
 }

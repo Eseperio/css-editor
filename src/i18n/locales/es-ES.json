@@ -75,6 +75,7 @@
       "enterCustomValue": "Introducir valor personalizado",
       "pickColor": "Elegir un color",
       "adjustValue": "Ajustar valor",
+      "clickForSlider": "Haz clic para ajustar con control deslizante",
       "remove": "Eliminar"
     },
     "filters": {
