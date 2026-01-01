@@ -1,6 +1,6 @@
 import { ElementPicker } from './element-picker';
 import { generateUniqueSelector } from './selector-generator';
-import { CSSEditorPanel, CSSEditorOptions } from './editor-panel';
+import { CSSEditorPanel, CSSEditorOptions, ViewportMode } from './editor-panel';
 
 /**
  * Main CSSEditor class
@@ -14,18 +14,59 @@ export class CSSEditor {
   private panel: CSSEditorPanel; 
   private activateButton: HTMLElement | null = null;
   private options: CSSEditorOptions; // Store options for reference
+  private iframe: HTMLIFrameElement | null = null;
+  private iframeContainer: HTMLElement | null = null;
 
   constructor(options: CSSEditorOptions = {}) {
     this.options = options;
     this.picker = new ElementPicker();
     this.panel = new CSSEditorPanel(options);
+    
+    // Listen for viewport mode changes
+    if (options.iframeMode) {
+      window.addEventListener('viewportModeChange', this.handleViewportModeChange as EventListener);
+    }
   }
+
+  /**
+   * Handle viewport mode changes from the panel
+   */
+  private handleViewportModeChange = (event: CustomEvent<{ mode: ViewportMode }>): void => {
+    if (!this.iframe || !this.options.iframeMode) return;
+    
+    const mode = event.detail.mode;
+    const sizes = this.options.iframeMode.viewportSizes || {
+      desktop: window.innerWidth,
+      tablet: 768,
+      phone: 480
+    };
+    
+    let width: number;
+    switch (mode) {
+      case 'tablet':
+        width = sizes.tablet || 768;
+        break;
+      case 'phone':
+        width = sizes.phone || 480;
+        break;
+      default:
+        width = sizes.desktop || window.innerWidth;
+    }
+    
+    this.iframe.style.width = `${width}px`;
+    this.iframe.style.margin = mode === 'desktop' ? '0' : '0 auto';
+  };
 
   /**
    * Initialize the CSS Editor with a button
    */
   public init(): void {
-    this.createActivateButton();
+    // Create iframe if in iframe mode
+    if (this.options.iframeMode) {
+      this.createIframe();
+    } else {
+      this.createActivateButton();
+    }
   }
 
   /**
@@ -49,7 +90,8 @@ export class CSSEditor {
    * Show the editor panel for a specific selector
    */
   public showEditor(selector: string): void {
-    const element = document.querySelector(selector);
+    const targetDoc = this.iframe?.contentDocument || document;
+    const element = targetDoc.querySelector(selector);
     if (element) {
       this.panel.show(selector, element);
     } else {
@@ -62,6 +104,69 @@ export class CSSEditor {
    */
   public hideEditor(): void {
     this.panel.hide();
+  }
+
+  /**
+   * Create iframe for iframe mode
+   */
+  private createIframe(): void {
+    if (!this.options.iframeMode) return;
+    
+    // Create container for iframe
+    this.iframeContainer = document.createElement('div');
+    this.iframeContainer.id = 'css-editor-iframe-container';
+    this.iframeContainer.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #f0f0f0;
+      z-index: 9990;
+      overflow: auto;
+    `;
+    
+    // Create iframe
+    this.iframe = document.createElement('iframe');
+    this.iframe.id = 'css-editor-iframe';
+    const sizes = this.options.iframeMode.viewportSizes || {
+      desktop: window.innerWidth,
+      tablet: 768,
+      phone: 480
+    };
+    
+    this.iframe.style.cssText = `
+      display: block;
+      width: ${sizes.desktop || window.innerWidth}px;
+      height: 100%;
+      border: none;
+      background: white;
+      box-shadow: 0 0 20px rgba(0,0,0,0.1);
+    `;
+    
+    this.iframe.src = this.options.iframeMode.url;
+    
+    // Wait for iframe to load
+    this.iframe.addEventListener('load', () => {
+      if (!this.iframe || !this.iframe.contentDocument) return;
+      
+      // Set target document for panel
+      this.panel.setTargetDocument(this.iframe.contentDocument);
+      
+      // Set target document for picker
+      this.picker.setTargetDocument(this.iframe.contentDocument, this.iframe);
+      
+      // Inject style element into iframe
+      const iframeStyleElement = this.iframe.contentDocument.createElement('style');
+      iframeStyleElement.id = 'css-editor-dynamic-styles';
+      this.iframe.contentDocument.head.appendChild(iframeStyleElement);
+      
+      // Create activator button after iframe loads
+      this.createActivateButton();
+    });
+    
+    this.iframeContainer.appendChild(this.iframe);
+    document.body.appendChild(this.iframeContainer);
   }
 
   /**
@@ -156,12 +261,24 @@ export class CSSEditor {
       this.activateButton.remove();
       this.activateButton = null;
     }
+    
+    // Clean up iframe
+    if (this.iframeContainer) {
+      this.iframeContainer.remove();
+      this.iframeContainer = null;
+      this.iframe = null;
+    }
+    
+    // Remove viewport mode change listener
+    if (this.options.iframeMode) {
+      window.removeEventListener('viewportModeChange', this.handleViewportModeChange as EventListener);
+    }
   }
 }
 
 // Export all necessary classes and functions
 export { ElementPicker } from './element-picker';
-export { CSSEditorPanel, CSSEditorOptions } from './editor-panel';
+export { CSSEditorPanel, CSSEditorOptions, ViewportMode } from './editor-panel';
 export { generateUniqueSelector } from './selector-generator';
 export { CSS_PROPERTIES, COMMON_PROPERTIES, getPropertyValues, getAdvancedProperties } from './css-properties';
 export { setLocale, getLocale, getAvailableLocales, getLocaleName, detectBrowserLocale, Locale } from './i18n';
