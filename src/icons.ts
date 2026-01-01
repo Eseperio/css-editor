@@ -2,12 +2,12 @@
  * Lucide icon helpers for the CSS Editor
  * Roadmap Task 2: Replace emojis with Lucide icons
  */
-import { 
-  Sun, 
-  Moon, 
-  Settings, 
-  Monitor, 
-  Tablet, 
+import {
+  Sun,
+  Moon,
+  Settings,
+  Monitor,
+  Tablet,
   Smartphone,
   X,
   Plus,
@@ -23,32 +23,55 @@ import {
   ArrowDown
 } from 'lucide';
 
-/**
- * Create an SVG icon element from a Lucide icon
- * Note: Using 'any' for icon parameter as Lucide's IconNode type structure
- * varies and doesn't provide a standard type export for this use case
- */
-export function createIcon(icon: any, className?: string): HTMLElement {
-  const iconElement = icon.create({
-    width: 16,
-    height: 16,
-    class: className || ''
+// In this package build, each icon is exported as an IconNode:
+// an array of [tagName, attrs] tuples describing the SVG children.
+type SVGProps = Record<string, string | number>;
+export type IconNode = [tag: string, attrs: SVGProps][];
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+function applyAttrs(el: Element, attrs: SVGProps): void {
+  Object.entries(attrs).forEach(([key, value]) => {
+    // Lucide uses dashed attrs like 'stroke-width'
+    el.setAttribute(key, String(value));
   });
-  return iconElement;
 }
 
 /**
- * Get icon HTML string for inline use
- * Note: Using 'any' for icon parameter as Lucide's IconNode type structure
- * varies and doesn't provide a standard type export for this use case
+ * Create an SVG icon element from a Lucide icon node.
  */
-export function getIconHTML(icon: any, className?: string): string {
-  const iconElement = icon.create({
+export function createIcon(icon: IconNode, className?: string): SVGElement {
+  const svg = document.createElementNS(SVG_NS, 'svg');
+
+  // Reasonable default attrs matching lucide icons
+  applyAttrs(svg, {
+    xmlns: SVG_NS,
     width: 16,
     height: 16,
-    class: className || ''
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    'stroke-width': 2,
+    'stroke-linecap': 'round',
+    'stroke-linejoin': 'round'
   });
-  return iconElement.outerHTML;
+
+  if (className) svg.setAttribute('class', className);
+
+  icon.forEach(([tag, attrs]) => {
+    const child = document.createElementNS(SVG_NS, tag);
+    applyAttrs(child, attrs);
+    svg.appendChild(child);
+  });
+
+  return svg;
+}
+
+/**
+ * Get icon HTML string for inline use.
+ */
+export function getIconHTML(icon: IconNode, className?: string): string {
+  return createIcon(icon, className).outerHTML;
 }
 
 // Export commonly used icons
