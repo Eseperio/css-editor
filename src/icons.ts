@@ -21,7 +21,9 @@ import {
   ArrowRight,
   ArrowUp,
   ArrowDown,
-  Layers
+  Layers,
+  Variable,  // Task 6: CSS variable icon
+  Edit       // Task 7: Variables panel edit icon
 } from 'lucide';
 
 // In this package build, each icon is exported as an IconNode:
@@ -95,5 +97,7 @@ export const icons = {
   arrowRight: ArrowRight,
   arrowUp: ArrowUp,
   arrowDown: ArrowDown,
-  layers: Layers  // Task 5: Media query icon
+  layers: Layers,      // Task 5: Media query icon
+  variable: Variable,  // Task 6: CSS variable icon
+  edit: Edit           // Task 7: Variables panel edit icon
 };

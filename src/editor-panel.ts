@@ -120,6 +120,10 @@ export class CSSEditorPanel {
   private viewportMode: ViewportMode = 'desktop';
   // Task 5: Media query storage per property
   private propertyMediaQueries: Map<string, Map<string, MediaQueryContext>> = new Map(); // Map<selector, Map<property, context>>
+  // Task 6-7: CSS variables storage
+  private cssVariables: Map<string, string> = new Map(); // Map<variable-name, value>
+  private propertyVariables: Map<string, Map<string, string>> = new Map(); // Map<selector, Map<property, var-name>>
+  private variablesPanelVisible: boolean = false;
   // Target document (main document or iframe document)
   private targetDocument: Document = document;
   // Resize handle state
@@ -149,6 +153,39 @@ export class CSSEditorPanel {
     if (savedTheme) {
       this.theme = savedTheme;
     }
+    
+    // Task 6-7: Detect CSS variables from :root
+    this.detectCSSVariables();
+  }
+
+  /**
+   * Task 6-7: Detect CSS variables from :root selector
+   */
+  private detectCSSVariables(): void {
+    this.cssVariables.clear();
+    
+    // Get all stylesheets
+    const sheets = Array.from(document.styleSheets);
+    
+    sheets.forEach(sheet => {
+      try {
+        const rules = Array.from(sheet.cssRules || []);
+        rules.forEach(rule => {
+          if (rule instanceof CSSStyleRule && rule.selectorText === ':root') {
+            const style = rule.style;
+            for (let i = 0; i < style.length; i++) {
+              const prop = style[i];
+              if (prop.startsWith('--')) {
+                const value = style.getPropertyValue(prop).trim();
+                this.cssVariables.set(prop, value);
+              }
+            }
+          }
+        });
+      } catch (e) {
+        // Skip stylesheets that can't be accessed (CORS)
+      }
+    });
   }
 
   /**
@@ -320,6 +357,9 @@ export class CSSEditorPanel {
           <button class="theme-toggle" title="Toggle theme">
             <span class="theme-icon">${getIconHTML(this.theme === 'dark' ? icons.sun : icons.moon)}</span>
           </button>
+          <button class="variables-panel-toggle" title="CSS Variables Manager">
+            ${getIconHTML(icons.variable)}
+          </button>
           ${this.options.iframeMode ? `
           <div class="viewport-mode-controls">
             <button class="viewport-mode-btn ${this.viewportMode === 'desktop' ? 'active' : ''}" data-mode="desktop" title="Desktop view">${getIconHTML(icons.monitor)}</button>
@@ -344,6 +384,9 @@ export class CSSEditorPanel {
           </div>
           <button class="css-editor-close" title="${t('ui.panel.close')}">${getIconHTML(icons.close)}</button>
         </div>
+      </div>
+      <div class="variables-management-panel" style="display: none;">
+        ${this.renderVariablesPanel()}
       </div>
       <div class="css-editor-content">
         <div class="properties-grid">
@@ -436,6 +479,10 @@ export class CSSEditorPanel {
     // Theme toggle button
     const themeToggleBtn = this.panel.querySelector('.theme-toggle');
     themeToggleBtn?.addEventListener('click', () => this.toggleTheme());
+
+    // Task 7: Variables panel toggle
+    const variablesPanelToggle = this.panel.querySelector('.variables-panel-toggle');
+    variablesPanelToggle?.addEventListener('click', () => this.toggleVariablesPanel());
 
     // Roadmap Task 3: Config dropdown triggers
     const configDropdowns = this.panel.querySelectorAll('.config-dropdown');
@@ -665,6 +712,172 @@ export class CSSEditorPanel {
   }
 
   /**
+   * Task 7: Toggle variables management panel
+   */
+  private toggleVariablesPanel(): void {
+    this.variablesPanelVisible = !this.variablesPanelVisible;
+    const panel = this.panel?.querySelector('.variables-management-panel') as HTMLElement;
+    const content = this.panel?.querySelector('.css-editor-content') as HTMLElement;
+    
+    if (panel && content) {
+      panel.style.display = this.variablesPanelVisible ? 'block' : 'none';
+      content.style.display = this.variablesPanelVisible ? 'none' : 'block';
+      
+      if (this.variablesPanelVisible) {
+        // Refresh panel content
+        panel.innerHTML = this.renderVariablesPanel();
+        this.attachVariablesPanelListeners();
+      }
+    }
+  }
+
+  /**
+   * Task 7: Attach event listeners for variables panel
+   */
+  private attachVariablesPanelListeners(): void {
+    if (!this.panel) return;
+    
+    // Close button
+    const closeBtn = this.panel.querySelector('.variables-panel-close');
+    closeBtn?.addEventListener('click', () => this.toggleVariablesPanel());
+    
+    // Edit variable buttons
+    const editBtns = this.panel.querySelectorAll('.variable-edit-btn');
+    editBtns.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const varName = (btn as HTMLElement).getAttribute('data-var');
+        if (varName) {
+          const input = this.panel?.querySelector(`.variable-value-input[data-var="${varName}"]`) as HTMLInputElement;
+          if (input) {
+            input.focus();
+            input.select();
+          }
+        }
+      });
+    });
+    
+    // Variable value inputs
+    const valueInputs = this.panel.querySelectorAll('.variable-value-input');
+    valueInputs.forEach(input => {
+      input.addEventListener('change', (e) => {
+        const varName = (input as HTMLInputElement).getAttribute('data-var');
+        const newValue = (input as HTMLInputElement).value;
+        if (varName) {
+          this.updateCSSVariable(varName, newValue);
+        }
+      });
+    });
+    
+    // Delete variable buttons
+    const deleteBtns = this.panel.querySelectorAll('.variable-delete-btn');
+    deleteBtns.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const varName = (btn as HTMLElement).getAttribute('data-var');
+        if (varName) {
+          this.deleteCSSVariable(varName);
+        }
+      });
+    });
+    
+    // Create variable button
+    const createBtn = this.panel.querySelector('.variable-create-btn');
+    createBtn?.addEventListener('click', () => {
+      const nameInput = this.panel?.querySelector('.variable-new-name') as HTMLInputElement;
+      const valueInput = this.panel?.querySelector('.variable-new-value') as HTMLInputElement;
+      
+      if (nameInput && valueInput) {
+        const varName = nameInput.value.trim();
+        const varValue = valueInput.value.trim();
+        
+        if (varName && varValue) {
+          // Ensure variable name starts with --
+          const finalName = varName.startsWith('--') ? varName : `--${varName}`;
+          this.createCSSVariable(finalName, varValue);
+          nameInput.value = '';
+          valueInput.value = '';
+        }
+      }
+    });
+  }
+
+  /**
+   * Task 7: Create new CSS variable
+   */
+  private createCSSVariable(name: string, value: string): void {
+    this.cssVariables.set(name, value);
+    this.addVariableToStylesheet(name, value);
+    this.toggleVariablesPanel(); // Refresh panel
+    this.toggleVariablesPanel();
+  }
+
+  /**
+   * Task 7: Update CSS variable
+   */
+  private updateCSSVariable(name: string, newValue: string): void {
+    this.cssVariables.set(name, newValue);
+    this.updateVariableInStylesheet(name, newValue);
+    
+    // Update all properties using this variable
+    this.propertyVariables.forEach((props, selector) => {
+      props.forEach((varName, property) => {
+        if (varName === name) {
+          // Refresh the displayed computed value
+          this.renderCommonProperties();
+          this.renderAdvancedProperties();
+        }
+      });
+    });
+    
+    this.updatePreview();
+  }
+
+  /**
+   * Task 7: Delete CSS variable
+   */
+  private deleteCSSVariable(name: string): void {
+    this.cssVariables.delete(name);
+    this.removeVariableFromStylesheet(name);
+    this.toggleVariablesPanel(); // Refresh panel
+    this.toggleVariablesPanel();
+  }
+
+  /**
+   * Task 7: Add variable to stylesheet
+   */
+  private addVariableToStylesheet(name: string, value: string): void {
+    const style = document.createElement('style');
+    style.id = `css-var-${name.replace(/[^a-z0-9]/gi, '-')}`;
+    style.textContent = `:root { ${name}: ${value}; }`;
+    document.head.appendChild(style);
+  }
+
+  /**
+   * Task 7: Update variable in stylesheet
+   */
+  private updateVariableInStylesheet(name: string, value: string): void {
+    const styleId = `css-var-${name.replace(/[^a-z0-9]/gi, '-')}`;
+    let style = document.getElementById(styleId) as HTMLStyleElement;
+    
+    if (!style) {
+      this.addVariableToStylesheet(name, value);
+      return;
+    }
+    
+    style.textContent = `:root { ${name}: ${value}; }`;
+  }
+
+  /**
+   * Task 7: Remove variable from stylesheet
+   */
+  private removeVariableFromStylesheet(name: string): void {
+    const styleId = `css-var-${name.replace(/[^a-z0-9]/gi, '-')}`;
+    const style = document.getElementById(styleId);
+    if (style) {
+      style.remove();
+    }
+  }
+
+  /**
    * Apply the current theme to the panel
    */
   private applyTheme(): void {
@@ -793,6 +1006,7 @@ export class CSSEditorPanel {
     this.attachCompoundPropertyListeners();
     this.attachMultiValuePropertyListeners();
     this.attachMediaQueryListeners();  // Task 5: Attach MQ listeners
+    this.attachVariableListeners();    // Task 6: Attach variable listeners
   }
 
   /**
@@ -823,6 +1037,31 @@ export class CSSEditorPanel {
     const mqContext = this.getPropertyMediaQueryContext(prop);
     const mqIcon = this.renderMediaQueryIcon(prop, mqContext);
     
+    // Task 6: Check if property is using a CSS variable
+    const variableName = this.getPropertyVariable(prop);
+    const varIcon = this.renderVariableIcon(prop, variableName);
+    
+    if (variableName) {
+      // Property is using a CSS variable - show variable display instead of inputs
+      const computedValue = this.cssVariables.get(variableName) || 'unknown';
+      return `
+        <div class="css-property ${isModified ? 'active' : 'disabled'} ${isSpacingSide ? 'spacing-side' : ''}" data-property="${prop}">
+          <label>${translatedProp}</label>
+          <div class="property-input-with-mq">
+            <div class="variable-display" data-property="${prop}">
+              <div class="variable-name">${variableName}</div>
+              <div class="variable-computed-value">${computedValue}</div>
+              <button class="variable-remove-btn" data-property="${prop}" title="Remove variable">
+                ${getIconHTML(icons.close)}
+              </button>
+            </div>
+            ${mqIcon}
+            ${varIcon}
+          </div>
+        </div>
+      `;
+    }
+    
     // If property has predefined suggestions (like display, position), use dropdown
     if (suggestions.length > 0) {
       return `
@@ -838,6 +1077,7 @@ export class CSSEditorPanel {
             </select>
             <input type="text" class="custom-property-input" data-property="${prop}" placeholder="${t('ui.inputs.enterCustomValue')}" value="${isCustomValue ? trimmedValue : ''}" ${isCustomValue ? '' : 'style="display:none;"'} />
             ${mqIcon}
+            ${varIcon}
           </div>
         </div>
       `;
@@ -848,6 +1088,7 @@ export class CSSEditorPanel {
           <div class="property-input-with-mq">
             ${createColorInput(prop, currentValue)}
             ${mqIcon}
+            ${varIcon}
           </div>
         </div>
       `;
@@ -858,6 +1099,7 @@ export class CSSEditorPanel {
           <div class="property-input-with-mq">
             ${createSizeInput(prop, currentValue)}
             ${mqIcon}
+            ${varIcon}
           </div>
         </div>
       `;
@@ -868,6 +1110,7 @@ export class CSSEditorPanel {
           <div class="property-input-with-mq">
             ${createFilterInput(prop, currentValue)}
             ${mqIcon}
+            ${varIcon}
           </div>
         </div>
       `;
@@ -878,6 +1121,7 @@ export class CSSEditorPanel {
           <div class="property-input-with-mq">
             ${createPercentageInput(prop, currentValue)}
             ${mqIcon}
+            ${varIcon}
           </div>
         </div>
       `;
@@ -888,10 +1132,48 @@ export class CSSEditorPanel {
           <div class="property-input-with-mq">
             <input type="text" data-property="${prop}" value="${currentValue}" placeholder="${t('ui.inputs.enterValue')}" />
             ${mqIcon}
+            ${varIcon}
           </div>
         </div>
       `;
     }
+  }
+
+  /**
+   * Task 6: Get CSS variable for a property
+   */
+  private getPropertyVariable(property: string): string | null {
+    const selectorVars = this.propertyVariables.get(this.currentSelector);
+    if (!selectorVars) return null;
+    return selectorVars.get(property) || null;
+  }
+
+  /**
+   * Task 6: Render CSS variable icon
+   */
+  private renderVariableIcon(property: string, currentVariable: string | null): string {
+    const isUsingVariable = currentVariable !== null;
+    const iconClass = isUsingVariable ? 'var-icon-active' : 'var-icon';
+    
+    const variablesList = Array.from(this.cssVariables.keys());
+    const variablesOptions = variablesList.map(varName => 
+      `<button class="var-option ${currentVariable === varName ? 'selected' : ''}" data-var="${varName}" data-property="${property}">
+        ${varName}
+        <span class="var-value">${this.cssVariables.get(varName)}</span>
+      </button>`
+    ).join('');
+    
+    return `
+      <div class="variable-selector">
+        <button class="var-trigger ${iconClass}" data-property="${property}" title="CSS Variable">
+          ${getIconHTML(icons.variable)}
+        </button>
+        <div class="var-dropdown" data-property="${property}" style="display: none;">
+          <div class="var-dropdown-header">CSS Variables</div>
+          ${variablesList.length > 0 ? variablesOptions : '<div class="var-no-variables">No variables defined in :root</div>'}
+        </div>
+      </div>
+    `;
   }
 
   /**
@@ -1549,6 +1831,126 @@ export class CSSEditorPanel {
   }
 
   /**
+   * Task 6: Attach variable selector listeners
+   */
+  private attachVariableListeners(): void {
+    if (!this.panel) return;
+    
+    // Variable trigger buttons
+    const varTriggers = this.panel.querySelectorAll('.var-trigger');
+    varTriggers.forEach(trigger => {
+      trigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const property = (trigger as HTMLElement).getAttribute('data-property');
+        if (!property) return;
+        
+        // Close other dropdowns
+        const allDropdowns = this.panel?.querySelectorAll('.var-dropdown');
+        allDropdowns?.forEach(dropdown => {
+          const dropdownProp = (dropdown as HTMLElement).getAttribute('data-property');
+          if (dropdownProp !== property) {
+            (dropdown as HTMLElement).style.display = 'none';
+          }
+        });
+        
+        // Toggle this dropdown
+        const dropdown = this.panel?.querySelector(`.var-dropdown[data-property="${property}"]`) as HTMLElement;
+        if (dropdown) {
+          dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+        }
+      });
+    });
+    
+    // Variable option buttons
+    const varOptions = this.panel.querySelectorAll('.var-option');
+    varOptions.forEach(option => {
+      option.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const property = (option as HTMLElement).getAttribute('data-property');
+        const varName = (option as HTMLElement).getAttribute('data-var');
+        if (!property || !varName) return;
+        
+        this.setPropertyVariable(property, varName);
+        
+        // Close dropdown
+        const dropdown = this.panel?.querySelector(`.var-dropdown[data-property="${property}"]`) as HTMLElement;
+        if (dropdown) {
+          dropdown.style.display = 'none';
+        }
+        
+        // Refresh UI
+        this.renderCommonProperties();
+        this.renderAdvancedProperties();
+        this.attachVariableListeners();
+      });
+    });
+    
+    // Variable remove buttons
+    const varRemoveButtons = this.panel.querySelectorAll('.variable-remove-btn');
+    varRemoveButtons.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const property = (btn as HTMLElement).getAttribute('data-property');
+        if (!property) return;
+        
+        this.removePropertyVariable(property);
+        
+        // Refresh UI
+        this.renderCommonProperties();
+        this.renderAdvancedProperties();
+        this.attachVariableListeners();
+      });
+    });
+    
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', () => {
+      const allDropdowns = this.panel?.querySelectorAll('.var-dropdown');
+      allDropdowns?.forEach(dropdown => {
+        (dropdown as HTMLElement).style.display = 'none';
+      });
+    }, { once: true });
+  }
+
+  /**
+   * Task 6: Set CSS variable for a property
+   */
+  private setPropertyVariable(property: string, variableName: string): void {
+    let selectorVars = this.propertyVariables.get(this.currentSelector);
+    if (!selectorVars) {
+      selectorVars = new Map();
+      this.propertyVariables.set(this.currentSelector, selectorVars);
+    }
+    selectorVars.set(property, variableName);
+    
+    // Update the property value to use the variable
+    const varValue = this.cssVariables.get(variableName);
+    if (varValue) {
+      this.currentStyles.set(property, `var(${variableName})`);
+      this.modifiedProperties.add(property);
+      this.updatePreview();
+    }
+  }
+
+  /**
+   * Task 6: Remove CSS variable from a property
+   */
+  private removePropertyVariable(property: string): void {
+    const selectorVars = this.propertyVariables.get(this.currentSelector);
+    if (selectorVars) {
+      const varName = selectorVars.get(property);
+      if (varName) {
+        // Set property to the computed value of the variable
+        const computedValue = this.cssVariables.get(varName);
+        if (computedValue) {
+          this.currentStyles.set(property, computedValue);
+        }
+        selectorVars.delete(property);
+      }
+    }
+    this.updatePreview();
+  }
+
+  /**
    * Add a new shadow to a multi-value property
    */
   private addShadow(property: string): void {
@@ -1716,6 +2118,52 @@ export class CSSEditorPanel {
         }
       });
     });
+  }
+
+  /**
+   * Task 7: Render variables management panel
+   */
+  private renderVariablesPanel(): string {
+    const variablesList = Array.from(this.cssVariables.entries());
+    
+    const variablesHTML = variablesList.map(([varName, value]) => `
+      <div class="variable-item" data-var="${varName}">
+        <div class="variable-item-header">
+          <span class="variable-item-name">${varName}</span>
+          <div class="variable-item-actions">
+            <button class="variable-edit-btn" data-var="${varName}" title="Edit variable">
+              ${getIconHTML(icons.edit)}
+            </button>
+            <button class="variable-delete-btn" data-var="${varName}" title="Delete variable">
+              ${getIconHTML(icons.close)}
+            </button>
+          </div>
+        </div>
+        <div class="variable-item-value">
+          <input type="text" class="variable-value-input" data-var="${varName}" value="${value}" />
+        </div>
+      </div>
+    `).join('');
+    
+    return `
+      <div class="variables-panel-header">
+        <h3>CSS Variables Manager</h3>
+        <button class="variables-panel-close" title="Close">${getIconHTML(icons.close)}</button>
+      </div>
+      <div class="variables-panel-content">
+        <div class="variables-list">
+          ${variablesList.length > 0 ? variablesHTML : '<div class="no-variables">No CSS variables defined. Create one below.</div>'}
+        </div>
+        <div class="variable-create-section">
+          <h4>Create New Variable</h4>
+          <div class="variable-create-form">
+            <input type="text" class="variable-new-name" placeholder="--variable-name" />
+            <input type="text" class="variable-new-value" placeholder="Value (e.g., #ff0000)" />
+            <button class="variable-create-btn">${getIconHTML(icons.plus)} Create</button>
+          </div>
+        </div>
+      </div>
+    `;
   }
 
   /**

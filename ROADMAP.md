@@ -22,7 +22,7 @@
       css editor, where it can still change all the properties modified in other previews that are not specific for a
       media query, while at the same time can identify which properties have been customized for other media queries. So
       user does not miss when a property is going to behave differently in other media queries.
-- [ ] Implement support for css native variables. Just inline, after each property name, there will be an icon. When
+- [x] Implement support for css native variables. Just inline, after each property name, there will be an icon. When
   user clicks on it, a popover appears with a list of all css variables defined in :root selector. User can choose one
   of them, and the value of the property will be set to that variable, instead of a fixed value. The icon will change to
   light blue as a sign that property is using a css variable and inputs for that property will be hidden, showing
@@ -30,6 +30,6 @@
   moment (so user can identify which variable is being used). On the right side of that box of name and value, a
   clickable cross icon will appear, so user can click on it to remove the variable and set back fixed value, which will
   be the current value of that variable, and the inputs will appear again for changing it.
-- [ ] Add a new panel for managing css variables. In that panel, user can create, edit and delete (delete only those
+- [x] Add a new panel for managing css variables. In that panel, user can create, edit and delete (delete only those
   created in this editor) css variables. Whenever a variable is edited, all properties using that variable must update
   their displayed value accordingly. 
