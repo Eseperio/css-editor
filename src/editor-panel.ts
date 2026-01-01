@@ -114,6 +114,10 @@ export class CSSEditorPanel {
   private resizeStartY: number = 0;
   private resizeStartWidth: number = 0;
   private resizeStartHeight: number = 0;
+  // Bound event handlers for proper cleanup
+  private boundHandleResizeMove: ((e: MouseEvent) => void) | null = null;
+  private boundHandleResizeEnd: (() => void) | null = null;
+  private boundHandleDocumentClick: ((e: MouseEvent) => void) | null = null;
 
   constructor(options: CSSEditorOptions = {}) {
     this.options = options;
@@ -439,13 +443,14 @@ export class CSSEditorPanel {
       }
     });
 
-    // Close dropdowns when clicking outside
-    document.addEventListener('click', (e) => {
+    // Close dropdowns when clicking outside - store bound handler for cleanup
+    this.boundHandleDocumentClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       if (!target.closest('.config-dropdown')) {
         configDropdowns.forEach(d => d.classList.remove('open'));
       }
-    });
+    };
+    document.addEventListener('click', this.boundHandleDocumentClick);
 
     // Locale selector
     const localeSelect = this.panel.querySelector('.locale-select') as HTMLSelectElement | null;
@@ -2756,8 +2761,12 @@ export class CSSEditorPanel {
       this.resizeStartHeight = rect.height;
     }
     
-    document.addEventListener('mousemove', this.handleResizeMove.bind(this));
-    document.addEventListener('mouseup', this.handleResizeEnd.bind(this));
+    // Create bound handlers for proper cleanup
+    this.boundHandleResizeMove = this.handleResizeMove.bind(this);
+    this.boundHandleResizeEnd = this.handleResizeEnd.bind(this);
+    
+    document.addEventListener('mousemove', this.boundHandleResizeMove);
+    document.addEventListener('mouseup', this.boundHandleResizeEnd);
     
     // Add resizing class for visual feedback
     this.panel?.classList.add('resizing');
@@ -2800,8 +2809,17 @@ export class CSSEditorPanel {
    */
   private handleResizeEnd(): void {
     this.isResizing = false;
-    document.removeEventListener('mousemove', this.handleResizeMove.bind(this));
-    document.removeEventListener('mouseup', this.handleResizeEnd.bind(this));
+    
+    // Remove event listeners using stored bound handlers
+    if (this.boundHandleResizeMove) {
+      document.removeEventListener('mousemove', this.boundHandleResizeMove);
+      this.boundHandleResizeMove = null;
+    }
+    if (this.boundHandleResizeEnd) {
+      document.removeEventListener('mouseup', this.boundHandleResizeEnd);
+      this.boundHandleResizeEnd = null;
+    }
+    
     this.panel?.classList.remove('resizing');
   }
 
@@ -2821,8 +2839,19 @@ export class CSSEditorPanel {
     this.allElementChanges.clear();
     // Task 5: Remove any remaining highlights
     this.removeHighlights();
-    // Clean up resize event listeners
-    document.removeEventListener('mousemove', this.handleResizeMove.bind(this));
-    document.removeEventListener('mouseup', this.handleResizeEnd.bind(this));
+    
+    // Clean up all event listeners using stored bound handlers
+    if (this.boundHandleResizeMove) {
+      document.removeEventListener('mousemove', this.boundHandleResizeMove);
+      this.boundHandleResizeMove = null;
+    }
+    if (this.boundHandleResizeEnd) {
+      document.removeEventListener('mouseup', this.boundHandleResizeEnd);
+      this.boundHandleResizeEnd = null;
+    }
+    if (this.boundHandleDocumentClick) {
+      document.removeEventListener('click', this.boundHandleDocumentClick);
+      this.boundHandleDocumentClick = null;
+    }
   }
 }

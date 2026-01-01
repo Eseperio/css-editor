@@ -25,6 +25,8 @@ import {
 
 /**
  * Create an SVG icon element from a Lucide icon
+ * Note: Using 'any' for icon parameter as Lucide's IconNode type structure
+ * varies and doesn't provide a standard type export for this use case
  */
 export function createIcon(icon: any, className?: string): HTMLElement {
   const iconElement = icon.create({
@@ -37,6 +39,8 @@ export function createIcon(icon: any, className?: string): HTMLElement {
 
 /**
  * Get icon HTML string for inline use
+ * Note: Using 'any' for icon parameter as Lucide's IconNode type structure
+ * varies and doesn't provide a standard type export for this use case
  */
 export function getIconHTML(icon: any, className?: string): string {
   const iconElement = icon.create({
