@@ -1,4 +1,4 @@
-- [ ] Allow changing the width (or height, depending on anchor) of sidebar by dragging its border (for each anchor is a
+- [x] Allow changing the width (or height, depending on anchor) of sidebar by dragging its border (for each anchor is a
   different border). No more than 50% of screen size, no less than 350px.
 - [ ] Use Lucide icons instead of emojis.
 - [ ] Use an icon for each config dropdown. When clicking the icon, it opens the dropdown. This reduces space used.

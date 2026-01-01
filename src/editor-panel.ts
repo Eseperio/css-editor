@@ -106,6 +106,13 @@ export class CSSEditorPanel {
   private viewportMode: ViewportMode = 'desktop';
   // Target document (main document or iframe document)
   private targetDocument: Document = document;
+  // Resize handle state
+  private resizeHandle: HTMLElement | null = null;
+  private isResizing: boolean = false;
+  private resizeStartX: number = 0;
+  private resizeStartY: number = 0;
+  private resizeStartWidth: number = 0;
+  private resizeStartHeight: number = 0;
 
   constructor(options: CSSEditorOptions = {}) {
     this.options = options;
@@ -287,6 +294,7 @@ export class CSSEditorPanel {
     ).join('');
     
     this.panel.innerHTML = `
+      <div class="resize-handle"></div>
       <div class="css-editor-header">
         <div class="header-actions">
           <button class="theme-toggle" title="Toggle theme">
@@ -467,6 +475,12 @@ export class CSSEditorPanel {
           }
         });
       });
+    }
+
+    // Resize handle
+    this.resizeHandle = this.panel.querySelector('.resize-handle');
+    if (this.resizeHandle) {
+      this.resizeHandle.addEventListener('mousedown', this.handleResizeStart.bind(this));
     }
   }
 
@@ -2667,6 +2681,70 @@ export class CSSEditorPanel {
   }
 
   /**
+   * Roadmap Task 1: Handle resize start
+   */
+  private handleResizeStart(e: MouseEvent): void {
+    e.preventDefault();
+    this.isResizing = true;
+    this.resizeStartX = e.clientX;
+    this.resizeStartY = e.clientY;
+    
+    if (this.panel) {
+      const rect = this.panel.getBoundingClientRect();
+      this.resizeStartWidth = rect.width;
+      this.resizeStartHeight = rect.height;
+    }
+    
+    document.addEventListener('mousemove', this.handleResizeMove.bind(this));
+    document.addEventListener('mouseup', this.handleResizeEnd.bind(this));
+    
+    // Add resizing class for visual feedback
+    this.panel?.classList.add('resizing');
+  }
+
+  /**
+   * Roadmap Task 1: Handle resize move
+   */
+  private handleResizeMove(e: MouseEvent): void {
+    if (!this.isResizing || !this.panel) return;
+    
+    const maxSize = window.innerWidth * 0.5; // 50% of screen
+    const minSize = 350; // 350px minimum
+    
+    if (this.anchorPosition === 'right') {
+      const deltaX = this.resizeStartX - e.clientX;
+      const newWidth = Math.max(minSize, Math.min(maxSize, this.resizeStartWidth + deltaX));
+      this.panel.style.width = `${newWidth}px`;
+    } else if (this.anchorPosition === 'left') {
+      const deltaX = e.clientX - this.resizeStartX;
+      const newWidth = Math.max(minSize, Math.min(maxSize, this.resizeStartWidth + deltaX));
+      this.panel.style.width = `${newWidth}px`;
+    } else if (this.anchorPosition === 'bottom') {
+      const deltaY = this.resizeStartY - e.clientY;
+      const maxHeight = window.innerHeight * 0.5;
+      const minHeight = 300;
+      const newHeight = Math.max(minHeight, Math.min(maxHeight, this.resizeStartHeight + deltaY));
+      this.panel.style.height = `${newHeight}px`;
+    } else if (this.anchorPosition === 'top') {
+      const deltaY = e.clientY - this.resizeStartY;
+      const maxHeight = window.innerHeight * 0.5;
+      const minHeight = 300;
+      const newHeight = Math.max(minHeight, Math.min(maxHeight, this.resizeStartHeight + deltaY));
+      this.panel.style.height = `${newHeight}px`;
+    }
+  }
+
+  /**
+   * Roadmap Task 1: Handle resize end
+   */
+  private handleResizeEnd(): void {
+    this.isResizing = false;
+    document.removeEventListener('mousemove', this.handleResizeMove.bind(this));
+    document.removeEventListener('mouseup', this.handleResizeEnd.bind(this));
+    this.panel?.classList.remove('resizing');
+  }
+
+  /**
    * Destroy the panel
    * Task 3: Clean up all element changes to prevent memory leaks
    */
@@ -2682,5 +2760,8 @@ export class CSSEditorPanel {
     this.allElementChanges.clear();
     // Task 5: Remove any remaining highlights
     this.removeHighlights();
+    // Clean up resize event listeners
+    document.removeEventListener('mousemove', this.handleResizeMove.bind(this));
+    document.removeEventListener('mouseup', this.handleResizeEnd.bind(this));
   }
 }
