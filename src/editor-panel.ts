@@ -13,6 +13,7 @@ import {
   CSS_UNITS
 } from './property-inputs';
 import { setLocale, t, translateProperty, translatePropertyGroup, Locale, getLocale, getAvailableLocales, getLocaleName } from './i18n';
+import { icons, createIcon, getIconHTML } from './icons';
 import './styles/editor-panel.scss';
 
 /**
@@ -298,13 +299,13 @@ export class CSSEditorPanel {
       <div class="css-editor-header">
         <div class="header-actions">
           <button class="theme-toggle" title="Toggle theme">
-            <span class="theme-icon">${this.theme === 'dark' ? '☀️' : '🌙'}</span>
+            <span class="theme-icon">${getIconHTML(this.theme === 'dark' ? icons.sun : icons.moon)}</span>
           </button>
           ${this.options.iframeMode ? `
           <div class="viewport-mode-controls">
-            <button class="viewport-mode-btn ${this.viewportMode === 'desktop' ? 'active' : ''}" data-mode="desktop" title="Desktop view">🖥️</button>
-            <button class="viewport-mode-btn ${this.viewportMode === 'tablet' ? 'active' : ''}" data-mode="tablet" title="Tablet view">📱</button>
-            <button class="viewport-mode-btn ${this.viewportMode === 'phone' ? 'active' : ''}" data-mode="phone" title="Phone view">📱</button>
+            <button class="viewport-mode-btn ${this.viewportMode === 'desktop' ? 'active' : ''}" data-mode="desktop" title="Desktop view">${getIconHTML(icons.monitor)}</button>
+            <button class="viewport-mode-btn ${this.viewportMode === 'tablet' ? 'active' : ''}" data-mode="tablet" title="Tablet view">${getIconHTML(icons.tablet)}</button>
+            <button class="viewport-mode-btn ${this.viewportMode === 'phone' ? 'active' : ''}" data-mode="phone" title="Phone view">${getIconHTML(icons.smartphone)}</button>
           </div>
           ` : ''}
           <select class="locale-select" title="${t('ui.panel.language')}">
@@ -316,7 +317,7 @@ export class CSSEditorPanel {
             <option value="left">${t('ui.panel.anchorLeft')}</option>
             <option value="top">${t('ui.panel.anchorTop')}</option>
           </select>
-          <button class="css-editor-close" title="${t('ui.panel.close')}">&times;</button>
+          <button class="css-editor-close" title="${t('ui.panel.close')}">${getIconHTML(icons.close)}</button>
         </div>
       </div>
       <div class="css-editor-content">
@@ -324,7 +325,7 @@ export class CSSEditorPanel {
           <div class="css-editor-selector">
             <div class="selector-header">
               <label>${t('ui.panel.selector')}:</label>
-              <button class="selector-config-toggle" title="Configure selector">⚙️</button>
+              <button class="selector-config-toggle" title="Configure selector">${getIconHTML(icons.settings)}</button>
             </div>
             <input type="text" class="selector-input" readonly />
             <div class="selector-count" aria-live="polite"></div>
@@ -335,7 +336,7 @@ export class CSSEditorPanel {
           </div>
           <div class="advanced-properties-section">
             <button class="add-property-btn" title="${t('ui.panel.addProperty')}">
-              <span class="plus-icon">+</span> ${t('ui.panel.addProperty')}
+              ${getIconHTML(icons.plus, 'plus-icon')} ${t('ui.panel.addProperty')}
             </button>
             <div class="advanced-properties"></div>
           </div>
@@ -579,7 +580,7 @@ export class CSSEditorPanel {
     // Update theme toggle icon
     const themeIcon = this.panel?.querySelector('.theme-icon');
     if (themeIcon) {
-      themeIcon.textContent = this.theme === 'dark' ? '☀️' : '🌙';
+      themeIcon.innerHTML = getIconHTML(this.theme === 'dark' ? icons.sun : icons.moon);
     }
   }
 
@@ -659,7 +660,7 @@ export class CSSEditorPanel {
           }).join('') + `
             <div class="spacing-collapse-container">
               <button class="spacing-collapse-btn" data-spacing="${prop}" title="${t('ui.spacing.collapseToGeneral', { property: translateProperty(prop) })}">
-                ⚙️ ${t('ui.spacing.collapseToGeneral', { property: translateProperty(prop) })}
+                ${getIconHTML(icons.settings)} ${t('ui.spacing.collapseToGeneral', { property: translateProperty(prop) })}
               </button>
             </div>
           `;
@@ -675,7 +676,7 @@ export class CSSEditorPanel {
               <label>
                 ${translateProperty(prop)}
                 <button class="spacing-expand-btn" data-spacing="${prop}" title="${t('ui.spacing.expandToSides')}">
-                  ⚙️
+                  ${getIconHTML(icons.settings)}
                 </button>
               </label>
               ${inputType === 'size' ? createSizeInput(prop, currentValue) : `<input type="text" data-property="${prop}" value="${currentValue}" placeholder="${t('ui.inputs.enterValue')}" />`}
@@ -689,7 +690,7 @@ export class CSSEditorPanel {
       
       // Task 12: Add warning icon to group header if dependency not met
       const warningIcon = !dependencyMet && group.dependsOn ? 
-        `<span class="dependency-warning" title="${dependencyWarning}">⚠️</span>` : '';
+        `<span class="dependency-warning" title="${dependencyWarning}">${getIconHTML(icons.alertTriangle)}</span>` : '';
       
       return `
         <div class="property-group ${!dependencyMet ? 'dependency-unmet' : ''}" data-group="${group.name}">
