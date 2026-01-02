@@ -198,6 +198,26 @@ The CSS Editor is built with **Svelte** for reactive UI components and **TypeScr
 
 See [SVELTE_MIGRATION.md](docs/SVELTE_MIGRATION.md) for details on the refactoring.
 
+### Development Mode
+
+Start the Vite dev server with Hot Module Replacement:
+
+```bash
+npm run dev
+```
+
+This will:
+- Start Vite dev server on `http://localhost:3000`
+- Automatically open `example/index.html` in your browser
+- Enable HMR for instant updates when you modify source files
+- Serve the example pages with live reloading
+
+Available demo pages:
+- `http://localhost:3000/example/index.html` - Main demo (uses built files)
+- `http://localhost:3000/example/dev.html` - Development demo (imports source directly with HMR)
+- `http://localhost:3000/example/esm-demo.html` - ESM demo
+- `http://localhost:3000/example/svelte-test.html` - Svelte test
+
 ### Build
 
 ```bash
@@ -210,14 +230,6 @@ This creates:
 - `dist/css-editor.css` - Styles (7.36KB)
 - `dist/*.d.ts` - TypeScript definitions
 
-### Development Mode
-
-```bash
-npm run dev
-```
-
-Watches for changes and rebuilds automatically with HMR.
-
 ### Testing
 
 ```bash
@@ -225,17 +237,13 @@ npm test        # Run tests once
 npm run test:watch  # Watch mode
 ```
 
-### Example
+### Preview Production Build
 
-Run the development server:
+After building, preview the production build:
+
 ```bash
-node server.js
+npm run preview
 ```
-
-Then open:
-- `http://localhost:4343/example/index.html` - Original demo
-- `http://localhost:4343/example/svelte-test.html` - Svelte UMD demo  
-- `http://localhost:4343/example/esm-demo.html` - ESM module demo
 
 ### Internationalization
 

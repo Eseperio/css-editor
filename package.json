@@ -9,11 +9,10 @@
   "scripts": {
     "build": "vite build && npm run build:types",
     "build:types": "tsc --emitDeclarationOnly",
-    "dev": "vite build --watch",
+    "dev": "vite",
     "test": "vitest run",
     "test:watch": "vitest",
     "build:styles": "node scripts/build-styles.js",
-    "serve": "npx concurrently \"npm run dev\" \"node server.js\"",
     "preview": "vite preview"
   },
   "keywords": [
