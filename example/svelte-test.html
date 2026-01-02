@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CSS Editor - Svelte Test</title>
+  <link rel="stylesheet" href="../dist/css-editor.css">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding: 40px;
+      background: #f0f0f0;
+    }
+    
+    .test-box {
+      padding: 20px;
+      margin: 20px 0;
+      background: white;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+    }
+    
+    .test-box h2 {
+      margin-top: 0;
+      color: #333;
+    }
+    
+    .demo-element {
+      padding: 20px;
+      margin: 10px 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="test-box">
+    <h2>CSS Editor - Svelte Refactor Test</h2>
+    <p>This page tests the new Svelte-based CSS Editor.</p>
+    <p>Click the button in the bottom-right corner to start editing elements.</p>
+  </div>
+  
+  <div class="test-box">
+    <h2>Demo Elements</h2>
+    <div class="demo-element">Click the picker and select this element!</div>
+    <div class="demo-element" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+      This element has a different gradient
+    </div>
+    <div class="demo-element" style="background: #4caf50;">
+      This one is solid green
+    </div>
+  </div>
+
+  <!-- Load the CSS Editor library -->
+  <script src="../dist/css-editor.js"></script>
+  <script>
+    console.log('CSS Editor loaded:', CSSEditor);
+    
+    // Initialize the CSS Editor
+    const editor = new CSSEditor.CSSEditor({
+      locale: 'en',
+      showGeneratedCSS: true,
+      onChange: (css) => {
+        console.log('CSS changed:', css);
+      },
+      onSave: (css) => {
+        console.log('CSS saved:', css);
+        alert('CSS saved! Check console.');
+      }
+    });
+    
+    // Initialize
+    editor.init();
+    
+    console.log('CSS Editor initialized');
+  </script>
+</body>
+</html>
