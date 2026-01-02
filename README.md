@@ -30,14 +30,29 @@ npm run build
 
 ## Usage
 
-### Basic Setup
+### Basic Setup (UMD)
 
 Include the library in your HTML:
 
 ```html
+<link rel="stylesheet" href="path/to/css-editor.css">
 <script src="path/to/css-editor.js"></script>
 <script>
   const editor = new CSSEditor.CSSEditor();
+  editor.init();
+</script>
+```
+
+### ES Module (ESM)
+
+Use with modern JavaScript imports:
+
+```html
+<link rel="stylesheet" href="path/to/css-editor.css">
+<script type="module">
+  import { CSSEditor } from './path/to/css-editor.esm.js';
+  
+  const editor = new CSSEditor();
   editor.init();
 </script>
 ```
@@ -166,6 +181,23 @@ app.get('/api/load-css', (req, res) => {
 
 ## Development
 
+### Architecture
+
+The CSS Editor is built with **Svelte** for reactive UI components and **TypeScript** for type safety. The architecture follows a modular component-based design:
+
+- **Components**: Reusable Svelte components for UI (`src/components/`)
+- **Stores**: Centralized state management with Svelte stores (`src/stores/`)
+- **i18n**: Internationalization with svelte-i18n (`src/i18n/`)
+- **Build**: Vite for fast builds and HMR
+
+**Key Benefits:**
+- 89% code reduction in main panel (3597 → 370 lines)
+- 46% smaller UMD bundle size
+- Better maintainability with component separation
+- 100% API backward compatibility
+
+See [SVELTE_MIGRATION.md](docs/SVELTE_MIGRATION.md) for details on the refactoring.
+
 ### Build
 
 ```bash
@@ -173,9 +205,10 @@ npm run build
 ```
 
 This creates:
-- `dist/css-editor.js` - UMD bundle for browsers
-- `dist/css-editor.esm.js` - ES module bundle
-- `dist/css-editor.d.ts` - TypeScript definitions
+- `dist/css-editor.js` - UMD bundle for browsers (117KB)
+- `dist/css-editor.esm.js` - ES module bundle (167KB)
+- `dist/css-editor.css` - Styles (7.36KB)
+- `dist/*.d.ts` - TypeScript definitions
 
 ### Development Mode
 
@@ -183,11 +216,26 @@ This creates:
 npm run dev
 ```
 
-Watches for changes and rebuilds automatically.
+Watches for changes and rebuilds automatically with HMR.
+
+### Testing
+
+```bash
+npm test        # Run tests once
+npm run test:watch  # Watch mode
+```
 
 ### Example
 
-Open `example/index.html` in your browser to see a live demo.
+Run the development server:
+```bash
+node server.js
+```
+
+Then open:
+- `http://localhost:4343/example/index.html` - Original demo
+- `http://localhost:4343/example/svelte-test.html` - Svelte UMD demo  
+- `http://localhost:4343/example/esm-demo.html` - ESM module demo
 
 ### Internationalization
 
