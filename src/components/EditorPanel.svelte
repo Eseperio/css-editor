@@ -85,7 +85,10 @@
     // Try to copy to clipboard
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(css)
-        .then(() => alert($_('ui.messages.cssCopied')))
+        .then(() => {
+          // TODO: Replace with toast notification for better UX
+          alert($_('ui.messages.cssCopied'));
+        })
         .catch(() => showCSSModal(css));
     } else {
       showCSSModal(css);
@@ -93,12 +96,13 @@
   }
   
   function showCSSModal(css: string) {
-    // Simple modal for copying CSS manually
+    // TODO: Replace with custom modal component for better UX and accessibility
     alert($_('ui.messages.copyManually') + '\n\n' + css);
   }
   
   // Handle clear
   function handleClear() {
+    // TODO: Replace with custom confirmation modal for better UX and accessibility
     if (confirm($_('ui.messages.confirmClear'))) {
       $editorState.allElementChanges.clear();
       $editorState.currentStyles.clear();

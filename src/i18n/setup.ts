@@ -1,4 +1,5 @@
 import { register, init, getLocaleFromNavigator, locale as localeStore, _ } from 'svelte-i18n';
+import { get } from 'svelte/store';
 
 // Register locales
 register('en', () => import('./locales/en.json'));
@@ -25,15 +26,10 @@ export function setLocale(locale: string) {
 }
 
 /**
- * Get the current locale
+ * Get the current locale using Svelte's get helper
  */
 export function getLocale(): string {
-  let currentLocale = 'en';
-  const unsubscribe = localeStore.subscribe(value => {
-    if (value) currentLocale = value;
-  });
-  unsubscribe();
-  return currentLocale;
+  return get(localeStore) || 'en';
 }
 
 /**

@@ -1,5 +1,6 @@
 import { writable } from 'svelte/store';
 import type { Writable } from 'svelte/store';
+import { get } from 'svelte/store';
 
 /**
  * Store for dynamic CSS styles management
@@ -50,13 +51,9 @@ const createStylesStore = (): Writable<StylesState> & {
       });
     },
     
-    // Get current CSS
+    // Get current CSS using Svelte's get helper
     getGeneratedCSS: (): string => {
-      let css = '';
-      subscribe(state => {
-        css = state.generatedCSS;
-      })();
-      return css;
+      return get({ subscribe }).generatedCSS;
     }
   };
 };

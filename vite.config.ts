@@ -17,10 +17,8 @@ export default defineConfig({
       }
     },
     rollupOptions: {
-      // External dependencies that shouldn't be bundled
-      external: [],
+      // No external dependencies - everything is bundled
       output: {
-        // Global variables to use in UMD build for externalized deps
         globals: {}
       }
     },
