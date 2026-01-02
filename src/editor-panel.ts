@@ -357,9 +357,6 @@ export class CSSEditorPanel {
           <button class="theme-toggle" title="Toggle theme">
             <span class="theme-icon">${getIconHTML(this.theme === 'dark' ? icons.sun : icons.moon)}</span>
           </button>
-          <button class="variables-panel-toggle" title="CSS Variables Manager">
-            ${getIconHTML(icons.variable)}
-          </button>
           ${this.options.iframeMode ? `
           <div class="viewport-mode-controls">
             <button class="viewport-mode-btn ${this.viewportMode === 'desktop' ? 'active' : ''}" data-mode="desktop" title="Desktop view">${getIconHTML(icons.monitor)}</button>
@@ -384,9 +381,6 @@ export class CSSEditorPanel {
           </div>
           <button class="css-editor-close" title="${t('ui.panel.close')}">${getIconHTML(icons.close)}</button>
         </div>
-      </div>
-      <div class="variables-management-panel" style="display: none;">
-        ${this.renderVariablesPanel()}
       </div>
       <div class="css-editor-content">
         <div class="properties-grid">
@@ -479,10 +473,6 @@ export class CSSEditorPanel {
     // Theme toggle button
     const themeToggleBtn = this.panel.querySelector('.theme-toggle');
     themeToggleBtn?.addEventListener('click', () => this.toggleTheme());
-
-    // Task 7: Variables panel toggle
-    const variablesPanelToggle = this.panel.querySelector('.variables-panel-toggle');
-    variablesPanelToggle?.addEventListener('click', () => this.toggleVariablesPanel());
 
     // Roadmap Task 3: Config dropdown triggers
     const configDropdowns = this.panel.querySelectorAll('.config-dropdown');
@@ -712,34 +702,10 @@ export class CSSEditorPanel {
   }
 
   /**
-   * Task 7: Toggle variables management panel
-   */
-  private toggleVariablesPanel(): void {
-    this.variablesPanelVisible = !this.variablesPanelVisible;
-    const panel = this.panel?.querySelector('.variables-management-panel') as HTMLElement;
-    const content = this.panel?.querySelector('.css-editor-content') as HTMLElement;
-    
-    if (panel && content) {
-      panel.style.display = this.variablesPanelVisible ? 'block' : 'none';
-      content.style.display = this.variablesPanelVisible ? 'none' : 'block';
-      
-      if (this.variablesPanelVisible) {
-        // Refresh panel content
-        panel.innerHTML = this.renderVariablesPanel();
-        this.attachVariablesPanelListeners();
-      }
-    }
-  }
-
-  /**
    * Task 7: Attach event listeners for variables panel
    */
   private attachVariablesPanelListeners(): void {
     if (!this.panel) return;
-    
-    // Close button
-    const closeBtn = this.panel.querySelector('.variables-panel-close');
-    closeBtn?.addEventListener('click', () => this.toggleVariablesPanel());
     
     // Edit variable buttons
     const editBtns = this.panel.querySelectorAll('.variable-edit-btn');
@@ -806,8 +772,7 @@ export class CSSEditorPanel {
   private createCSSVariable(name: string, value: string): void {
     this.cssVariables.set(name, value);
     this.addVariableToStylesheet(name, value);
-    this.toggleVariablesPanel(); // Refresh panel
-    this.toggleVariablesPanel();
+    this.renderCommonProperties(); // Refresh to show new variable
   }
 
   /**
@@ -837,8 +802,7 @@ export class CSSEditorPanel {
   private deleteCSSVariable(name: string): void {
     this.cssVariables.delete(name);
     this.removeVariableFromStylesheet(name);
-    this.toggleVariablesPanel(); // Refresh panel
-    this.toggleVariablesPanel();
+    this.renderCommonProperties(); // Refresh to remove variable
   }
 
   /**
@@ -998,7 +962,7 @@ export class CSSEditorPanel {
           </div>
         </div>
       `;
-    }).join('');
+    }).join('') + this.renderCSSVariablesGroup();
 
     this.attachPropertyListeners(container);
     this.attachGroupToggleListeners();
@@ -1007,6 +971,7 @@ export class CSSEditorPanel {
     this.attachMultiValuePropertyListeners();
     this.attachMediaQueryListeners();  // Task 5: Attach MQ listeners
     this.attachVariableListeners();    // Task 6: Attach variable listeners
+    this.attachVariablesPanelListeners(); // Task 7: Attach variables panel listeners
   }
 
   /**
@@ -2160,6 +2125,57 @@ export class CSSEditorPanel {
             <input type="text" class="variable-new-name" placeholder="--variable-name" />
             <input type="text" class="variable-new-value" placeholder="Value (e.g., #ff0000)" />
             <button class="variable-create-btn">${getIconHTML(icons.plus)} Create</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Task 7: Render CSS Variables as a property group
+   */
+  private renderCSSVariablesGroup(): string {
+    const variablesList = Array.from(this.cssVariables.entries());
+    const isCollapsed = this.collapsedGroups.has('css-variables');
+    const hasVariables = variablesList.length > 0;
+    
+    const variablesHTML = variablesList.map(([varName, value]) => `
+      <div class="variable-item" data-var="${varName}">
+        <div class="variable-item-header">
+          <span class="variable-item-name">${varName}</span>
+          <div class="variable-item-actions">
+            <button class="variable-edit-btn" data-var="${varName}" title="Edit variable">
+              ${getIconHTML(icons.edit)}
+            </button>
+            <button class="variable-delete-btn" data-var="${varName}" title="Delete variable">
+              ${getIconHTML(icons.close)}
+            </button>
+          </div>
+        </div>
+        <div class="variable-item-value">
+          <input type="text" class="variable-value-input" data-var="${varName}" value="${value}" />
+        </div>
+      </div>
+    `).join('');
+    
+    return `
+      <div class="property-group css-variables-group" data-group="css-variables">
+        <div class="property-group-header" data-group="css-variables">
+          <div class="property-group-indicator ${hasVariables ? 'active' : ''}"></div>
+          <div class="property-group-title">CSS Variables</div>
+          <div class="property-group-toggle ${isCollapsed ? 'collapsed' : ''}">▼</div>
+        </div>
+        <div class="property-group-content ${isCollapsed ? 'collapsed' : ''}">
+          <div class="variables-list">
+            ${variablesList.length > 0 ? variablesHTML : '<div class="no-variables">No CSS variables defined. Create one below.</div>'}
+          </div>
+          <div class="variable-create-section">
+            <h4>Create New Variable</h4>
+            <div class="variable-create-form">
+              <input type="text" class="variable-new-name" placeholder="--variable-name" />
+              <input type="text" class="variable-new-value" placeholder="Value (e.g., #ff0000)" />
+              <button class="variable-create-btn">${getIconHTML(icons.plus)} Create</button>
+            </div>
           </div>
         </div>
       </div>

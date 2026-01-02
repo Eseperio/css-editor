@@ -770,157 +770,73 @@ $panel-height-horizontal: 300px;
       }
     }
 
-  // Task 7: Variables management panel
-  .variables-management-panel {
-    background: var(--editor-bg);
-    border-bottom: 1px solid var(--editor-border);
-    
-    .variables-panel-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--editor-border);
+  // Task 7: CSS Variables group styles (integrated into property groups)
+  .css-variables-group {
+    .variables-list {
+      padding: 8px 12px;
       
-      h3 {
-        margin: 0;
-        font-size: 14px;
-        font-weight: 600;
-        color: var(--editor-text);
-      }
-      
-      .variables-panel-close {
-        background: transparent;
-        border: none;
-        color: var(--editor-text-muted);
-        cursor: pointer;
-        padding: 4px;
-        border-radius: var(--editor-radius-xs);
-        display: flex;
-        align-items: center;
-        transition: background 0.15s, color 0.15s;
-        
-        &:hover {
-          background: var(--editor-bg-muted);
-          color: var(--editor-text);
-        }
-      }
-    }
-    
-    .variables-panel-content {
-      padding: 16px;
-      max-height: 400px;
-      overflow-y: auto;
-      
-      .variables-list {
-        margin-bottom: 20px;
-        
-        .variable-item {
-          background: var(--editor-bg-elevated);
-          border: 1px solid var(--editor-border);
-          border-radius: var(--editor-radius-sm);
-          padding: 12px;
-          margin-bottom: 8px;
-          
-          .variable-item-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 8px;
-            
-            .variable-item-name {
-              font-family: monospace;
-              font-size: 13px;
-              font-weight: 500;
-              color: #2196f3;
-            }
-            
-            .variable-item-actions {
-              display: flex;
-              gap: 4px;
-              
-              button {
-                background: transparent;
-                border: none;
-                color: var(--editor-text-muted);
-                cursor: pointer;
-                padding: 4px;
-                border-radius: var(--editor-radius-xs);
-                display: flex;
-                align-items: center;
-                transition: background 0.15s, color 0.15s;
-                
-                svg {
-                  width: 14px;
-                  height: 14px;
-                }
-                
-                &:hover {
-                  background: var(--editor-bg-muted);
-                  color: var(--editor-text);
-                }
-                
-                &.variable-delete-btn:hover {
-                  background: rgba(244, 67, 54, 0.1);
-                  color: #f44336;
-                }
-              }
-            }
-          }
-          
-          .variable-item-value {
-            input {
-              width: 100%;
-              padding: 6px 8px;
-              background: var(--editor-input-bg);
-              border: 1px solid var(--editor-input-border);
-              color: var(--editor-text);
-              border-radius: var(--editor-radius-sm);
-              font-size: 12px;
-              font-family: monospace;
-              
-              &:focus {
-                outline: none;
-                border-color: var(--editor-input-focus);
-                box-shadow: 0 0 0 1px var(--editor-input-focus);
-              }
-            }
-          }
-        }
-        
-        .no-variables {
-          text-align: center;
-          padding: 20px;
-          color: var(--editor-text-subtle);
-          font-size: 13px;
-        }
-      }
-      
-      .variable-create-section {
+      .variable-item {
         background: var(--editor-bg-elevated);
         border: 1px solid var(--editor-border);
         border-radius: var(--editor-radius-sm);
-        padding: 12px;
+        padding: 10px;
+        margin-bottom: 8px;
         
-        h4 {
-          margin: 0 0 12px 0;
-          font-size: 13px;
-          font-weight: 600;
-          color: var(--editor-text);
+        .variable-item-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 6px;
+          
+          .variable-item-name {
+            font-family: monospace;
+            font-size: 12px;
+            font-weight: 500;
+            color: #2196f3;
+          }
+          
+          .variable-item-actions {
+            display: flex;
+            gap: 4px;
+            
+            button {
+              background: transparent;
+              border: none;
+              color: var(--editor-text-muted);
+              cursor: pointer;
+              padding: 4px;
+              border-radius: var(--editor-radius-xs);
+              display: flex;
+              align-items: center;
+              transition: background 0.15s, color 0.15s;
+              
+              svg {
+                width: 14px;
+                height: 14px;
+              }
+              
+              &:hover {
+                background: var(--editor-bg-muted);
+                color: var(--editor-text);
+              }
+              
+              &.variable-delete-btn:hover {
+                background: rgba(244, 67, 54, 0.1);
+                color: #f44336;
+              }
+            }
+          }
         }
         
-        .variable-create-form {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-          
+        .variable-item-value {
           input {
-            padding: 8px 10px;
+            width: 100%;
+            padding: 6px 8px;
             background: var(--editor-input-bg);
             border: 1px solid var(--editor-input-border);
             color: var(--editor-text);
             border-radius: var(--editor-radius-sm);
-            font-size: 12px;
+            font-size: 11px;
             font-family: monospace;
             
             &:focus {
@@ -928,36 +844,78 @@ $panel-height-horizontal: 300px;
               border-color: var(--editor-input-focus);
               box-shadow: 0 0 0 1px var(--editor-input-focus);
             }
-            
-            &::placeholder {
-              color: var(--editor-text-subtle);
-              font-family: sans-serif;
-            }
+          }
+        }
+      }
+      
+      .no-variables {
+        text-align: center;
+        padding: 16px;
+        color: var(--editor-text-subtle);
+        font-size: 12px;
+      }
+    }
+    
+    .variable-create-section {
+      padding: 8px 12px;
+      background: var(--editor-bg-muted);
+      border-top: 1px solid var(--editor-border);
+      
+      h4 {
+        margin: 0 0 8px 0;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--editor-text);
+      }
+      
+      .variable-create-form {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        
+        input {
+          padding: 7px 9px;
+          background: var(--editor-input-bg);
+          border: 1px solid var(--editor-input-border);
+          color: var(--editor-text);
+          border-radius: var(--editor-radius-sm);
+          font-size: 11px;
+          font-family: monospace;
+          
+          &:focus {
+            outline: none;
+            border-color: var(--editor-input-focus);
+            box-shadow: 0 0 0 1px var(--editor-input-focus);
           }
           
-          .variable-create-btn {
-            padding: 8px 12px;
-            background: var(--editor-accent);
-            border: none;
-            color: white;
-            border-radius: var(--editor-radius-sm);
-            cursor: pointer;
-            font-size: 12px;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            transition: background 0.15s;
-            
-            svg {
-              width: 14px;
-              height: 14px;
-            }
-            
-            &:hover {
-              background: var(--editor-accent-hover);
-            }
+          &::placeholder {
+            color: var(--editor-text-subtle);
+            font-family: sans-serif;
+          }
+        }
+        
+        .variable-create-btn {
+          padding: 7px 10px;
+          background: var(--editor-accent);
+          border: none;
+          color: white;
+          border-radius: var(--editor-radius-sm);
+          cursor: pointer;
+          font-size: 11px;
+          font-weight: 500;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 5px;
+          transition: background 0.15s;
+          
+          svg {
+            width: 13px;
+            height: 13px;
+          }
+          
+          &:hover {
+            background: var(--editor-accent-hover);
           }
         }
       }
