@@ -2,14 +2,19 @@
   "name": "css-editor",
   "version": "1.0.0",
   "description": "A tool for editing CSS over an existing HTML page",
+  "type": "module",
   "main": "dist/css-editor.js",
+  "module": "dist/css-editor.esm.js",
   "types": "dist/css-editor.d.ts",
   "scripts": {
-    "build": "tsc && rollup -c",
-    "dev": "rollup -c -w",
-    "test": "echo \"No tests yet\" && exit 0",
+    "build": "vite build && npm run build:types",
+    "build:types": "tsc --emitDeclarationOnly",
+    "dev": "vite build --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "build:styles": "node scripts/build-styles.js",
-    "serve": "npx concurrently \"npm run dev\" \"node server.js\""
+    "serve": "npx concurrently \"npm run dev\" \"node server.js\"",
+    "preview": "vite preview"
   },
   "keywords": [
     "css",
@@ -23,12 +28,20 @@
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^15.2.3",
     "@rollup/plugin-typescript": "^11.1.6",
+    "@sveltejs/vite-plugin-svelte": "^6.2.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/svelte": "^5.3.1",
     "concurrently": "^9.2.1",
+    "jsdom": "^27.4.0",
     "rollup": "^4.9.6",
     "rollup-plugin-scss": "^4.0.1",
     "sass": "^1.94.2",
+    "svelte": "^5.46.1",
+    "svelte-i18n": "^4.0.1",
     "tslib": "^2.6.2",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "vite": "^7.3.0",
+    "vitest": "^4.0.16"
   },
   "dependencies": {
     "lucide": "^0.562.0"
