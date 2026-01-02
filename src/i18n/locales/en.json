@@ -75,6 +75,7 @@
       "enterCustomValue": "Enter custom value",
       "pickColor": "Pick a color",
       "adjustValue": "Adjust value",
+      "clickForSlider": "Click to adjust with slider",
       "remove": "Remove"
     },
     "filters": {

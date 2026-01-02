@@ -13,12 +13,26 @@ import {
   CSS_UNITS
 } from './property-inputs';
 import { setLocale, t, translateProperty, translatePropertyGroup, Locale, getLocale, getAvailableLocales, getLocaleName } from './i18n';
+import { icons, createIcon, getIconHTML } from './icons';
 import './styles/editor-panel.scss';
 
 /**
  * Viewport mode for responsive design
  */
 export type ViewportMode = 'desktop' | 'tablet' | 'phone';
+
+/**
+ * Task 5: Media query context for properties
+ */
+export type MediaQueryContext = 'all' | ViewportMode;
+
+/**
+ * Task 5: Property with media query context
+ */
+interface PropertyMediaQuery {
+  value: string;
+  mediaQuery: MediaQueryContext;
+}
 
 /**
  * CSS Editor Panel Interface
@@ -104,8 +118,25 @@ export class CSSEditorPanel {
   private highlightOverlays: HTMLElement[] = [];
   // Viewport mode for responsive design
   private viewportMode: ViewportMode = 'desktop';
+  // Task 5: Media query storage per property
+  private propertyMediaQueries: Map<string, Map<string, MediaQueryContext>> = new Map(); // Map<selector, Map<property, context>>
+  // Task 6-7: CSS variables storage
+  private cssVariables: Map<string, string> = new Map(); // Map<variable-name, value>
+  private propertyVariables: Map<string, Map<string, string>> = new Map(); // Map<selector, Map<property, var-name>>
+  private variablesPanelVisible: boolean = false;
   // Target document (main document or iframe document)
   private targetDocument: Document = document;
+  // Resize handle state
+  private resizeHandle: HTMLElement | null = null;
+  private isResizing: boolean = false;
+  private resizeStartX: number = 0;
+  private resizeStartY: number = 0;
+  private resizeStartWidth: number = 0;
+  private resizeStartHeight: number = 0;
+  // Bound event handlers for proper cleanup
+  private boundHandleResizeMove: ((e: MouseEvent) => void) | null = null;
+  private boundHandleResizeEnd: (() => void) | null = null;
+  private boundHandleDocumentClick: ((e: MouseEvent) => void) | null = null;
 
   constructor(options: CSSEditorOptions = {}) {
     this.options = options;
@@ -122,6 +153,39 @@ export class CSSEditorPanel {
     if (savedTheme) {
       this.theme = savedTheme;
     }
+    
+    // Task 6-7: Detect CSS variables from :root
+    this.detectCSSVariables();
+  }
+
+  /**
+   * Task 6-7: Detect CSS variables from :root selector
+   */
+  private detectCSSVariables(): void {
+    this.cssVariables.clear();
+    
+    // Get all stylesheets
+    const sheets = Array.from(document.styleSheets);
+    
+    sheets.forEach(sheet => {
+      try {
+        const rules = Array.from(sheet.cssRules || []);
+        rules.forEach(rule => {
+          if (rule instanceof CSSStyleRule && rule.selectorText === ':root') {
+            const style = rule.style;
+            for (let i = 0; i < style.length; i++) {
+              const prop = style[i];
+              if (prop.startsWith('--')) {
+                const value = style.getPropertyValue(prop).trim();
+                this.cssVariables.set(prop, value);
+              }
+            }
+          }
+        });
+      } catch (e) {
+        // Skip stylesheets that can't be accessed (CORS)
+      }
+    });
   }
 
   /**
@@ -287,28 +351,35 @@ export class CSSEditorPanel {
     ).join('');
     
     this.panel.innerHTML = `
+      <div class="resize-handle"></div>
       <div class="css-editor-header">
         <div class="header-actions">
           <button class="theme-toggle" title="Toggle theme">
-            <span class="theme-icon">${this.theme === 'dark' ? '☀️' : '🌙'}</span>
+            <span class="theme-icon">${getIconHTML(this.theme === 'dark' ? icons.sun : icons.moon)}</span>
           </button>
           ${this.options.iframeMode ? `
           <div class="viewport-mode-controls">
-            <button class="viewport-mode-btn ${this.viewportMode === 'desktop' ? 'active' : ''}" data-mode="desktop" title="Desktop view">🖥️</button>
-            <button class="viewport-mode-btn ${this.viewportMode === 'tablet' ? 'active' : ''}" data-mode="tablet" title="Tablet view">📱</button>
-            <button class="viewport-mode-btn ${this.viewportMode === 'phone' ? 'active' : ''}" data-mode="phone" title="Phone view">📱</button>
+            <button class="viewport-mode-btn ${this.viewportMode === 'desktop' ? 'active' : ''}" data-mode="desktop" title="Desktop view">${getIconHTML(icons.monitor)}</button>
+            <button class="viewport-mode-btn ${this.viewportMode === 'tablet' ? 'active' : ''}" data-mode="tablet" title="Tablet view">${getIconHTML(icons.tablet)}</button>
+            <button class="viewport-mode-btn ${this.viewportMode === 'phone' ? 'active' : ''}" data-mode="phone" title="Phone view">${getIconHTML(icons.smartphone)}</button>
           </div>
           ` : ''}
-          <select class="locale-select" title="${t('ui.panel.language')}">
-            ${localeOptions}
-          </select>
-          <select class="anchor-select" title="${t('ui.panel.anchorPosition')}">
-            <option value="right">${t('ui.panel.anchorRight')}</option>
-            <option value="bottom">${t('ui.panel.anchorBottom')}</option>
-            <option value="left">${t('ui.panel.anchorLeft')}</option>
-            <option value="top">${t('ui.panel.anchorTop')}</option>
-          </select>
-          <button class="css-editor-close" title="${t('ui.panel.close')}">&times;</button>
+          <div class="config-dropdown locale-dropdown">
+            <button class="config-dropdown-trigger" title="${t('ui.panel.language')}">${getIconHTML(icons.languages)}</button>
+            <select class="locale-select config-dropdown-content">
+              ${localeOptions}
+            </select>
+          </div>
+          <div class="config-dropdown anchor-dropdown">
+            <button class="config-dropdown-trigger anchor-trigger" title="${t('ui.panel.anchorPosition')}">${this.getAnchorIcon()}</button>
+            <select class="anchor-select config-dropdown-content">
+              <option value="right">${t('ui.panel.anchorRight')}</option>
+              <option value="bottom">${t('ui.panel.anchorBottom')}</option>
+              <option value="left">${t('ui.panel.anchorLeft')}</option>
+              <option value="top">${t('ui.panel.anchorTop')}</option>
+            </select>
+          </div>
+          <button class="css-editor-close" title="${t('ui.panel.close')}">${getIconHTML(icons.close)}</button>
         </div>
       </div>
       <div class="css-editor-content">
@@ -316,7 +387,7 @@ export class CSSEditorPanel {
           <div class="css-editor-selector">
             <div class="selector-header">
               <label>${t('ui.panel.selector')}:</label>
-              <button class="selector-config-toggle" title="Configure selector">⚙️</button>
+              <button class="selector-config-toggle" title="Configure selector">${getIconHTML(icons.settings)}</button>
             </div>
             <input type="text" class="selector-input" readonly />
             <div class="selector-count" aria-live="polite"></div>
@@ -327,7 +398,7 @@ export class CSSEditorPanel {
           </div>
           <div class="advanced-properties-section">
             <button class="add-property-btn" title="${t('ui.panel.addProperty')}">
-              <span class="plus-icon">+</span> ${t('ui.panel.addProperty')}
+              ${getIconHTML(icons.plus, 'plus-icon')} ${t('ui.panel.addProperty')}
             </button>
             <div class="advanced-properties"></div>
           </div>
@@ -403,12 +474,45 @@ export class CSSEditorPanel {
     const themeToggleBtn = this.panel.querySelector('.theme-toggle');
     themeToggleBtn?.addEventListener('click', () => this.toggleTheme());
 
+    // Roadmap Task 3: Config dropdown triggers
+    const configDropdowns = this.panel.querySelectorAll('.config-dropdown');
+    configDropdowns.forEach(dropdown => {
+      const trigger = dropdown.querySelector('.config-dropdown-trigger');
+      const content = dropdown.querySelector('.config-dropdown-content') as HTMLSelectElement;
+      
+      if (trigger && content) {
+        trigger.addEventListener('click', (e) => {
+          e.stopPropagation();
+          // Close other dropdowns
+          configDropdowns.forEach(d => {
+            if (d !== dropdown) d.classList.remove('open');
+          });
+          dropdown.classList.toggle('open');
+          if (dropdown.classList.contains('open')) {
+            content.focus();
+          }
+        });
+      }
+    });
+
+    // Close dropdowns when clicking outside - store bound handler for cleanup
+    this.boundHandleDocumentClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.config-dropdown')) {
+        configDropdowns.forEach(d => d.classList.remove('open'));
+      }
+    };
+    document.addEventListener('click', this.boundHandleDocumentClick);
+
     // Locale selector
     const localeSelect = this.panel.querySelector('.locale-select') as HTMLSelectElement | null;
     if (localeSelect) {
       localeSelect.addEventListener('change', () => {
         const newLocale = localeSelect.value as Locale;
         this.changeLocale(newLocale);
+        // Close the dropdown after selection
+        const dropdown = localeSelect.closest('.config-dropdown');
+        dropdown?.classList.remove('open');
       });
     }
 
@@ -419,6 +523,9 @@ export class CSSEditorPanel {
       anchorSelect.addEventListener('change', () => {
         const value = anchorSelect.value as 'right' | 'left' | 'top' | 'bottom';
         this.setAnchorPosition(value);
+        // Close the dropdown after selection
+        const dropdown = anchorSelect.closest('.config-dropdown');
+        dropdown?.classList.remove('open');
       });
     }
 
@@ -467,6 +574,12 @@ export class CSSEditorPanel {
           }
         });
       });
+    }
+
+    // Resize handle
+    this.resizeHandle = this.panel.querySelector('.resize-handle');
+    if (this.resizeHandle) {
+      this.resizeHandle.addEventListener('mousedown', this.handleResizeStart.bind(this));
     }
   }
 
@@ -529,6 +642,25 @@ export class CSSEditorPanel {
     if (anchorSelect) {
       anchorSelect.value = this.anchorPosition;
     }
+    
+    // Update anchor icon
+    const anchorTrigger = this.panel.querySelector('.anchor-trigger');
+    if (anchorTrigger) {
+      anchorTrigger.innerHTML = this.getAnchorIcon();
+    }
+  }
+
+  /**
+   * Roadmap Task 3: Get the icon for current anchor position
+   */
+  private getAnchorIcon(): string {
+    switch (this.anchorPosition) {
+      case 'left': return getIconHTML(icons.arrowLeft);
+      case 'right': return getIconHTML(icons.arrowRight);
+      case 'top': return getIconHTML(icons.arrowUp);
+      case 'bottom': return getIconHTML(icons.arrowDown);
+      default: return getIconHTML(icons.arrowRight);
+    }
   }
 
   /**
@@ -565,7 +697,147 @@ export class CSSEditorPanel {
     // Update theme toggle icon
     const themeIcon = this.panel?.querySelector('.theme-icon');
     if (themeIcon) {
-      themeIcon.textContent = this.theme === 'dark' ? '☀️' : '🌙';
+      themeIcon.innerHTML = getIconHTML(this.theme === 'dark' ? icons.sun : icons.moon);
+    }
+  }
+
+  /**
+   * Task 7: Attach event listeners for variables panel
+   */
+  private attachVariablesPanelListeners(): void {
+    if (!this.panel) return;
+    
+    // Edit variable buttons
+    const editBtns = this.panel.querySelectorAll('.variable-edit-btn');
+    editBtns.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const varName = (btn as HTMLElement).getAttribute('data-var');
+        if (varName) {
+          const input = this.panel?.querySelector(`.variable-value-input[data-var="${varName}"]`) as HTMLInputElement;
+          if (input) {
+            input.focus();
+            input.select();
+          }
+        }
+      });
+    });
+    
+    // Variable value inputs
+    const valueInputs = this.panel.querySelectorAll('.variable-value-input');
+    valueInputs.forEach(input => {
+      input.addEventListener('change', (e) => {
+        const varName = (input as HTMLInputElement).getAttribute('data-var');
+        const newValue = (input as HTMLInputElement).value;
+        if (varName) {
+          this.updateCSSVariable(varName, newValue);
+        }
+      });
+    });
+    
+    // Delete variable buttons
+    const deleteBtns = this.panel.querySelectorAll('.variable-delete-btn');
+    deleteBtns.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const varName = (btn as HTMLElement).getAttribute('data-var');
+        if (varName) {
+          this.deleteCSSVariable(varName);
+        }
+      });
+    });
+    
+    // Create variable button
+    const createBtn = this.panel.querySelector('.variable-create-btn');
+    createBtn?.addEventListener('click', () => {
+      const nameInput = this.panel?.querySelector('.variable-new-name') as HTMLInputElement;
+      const valueInput = this.panel?.querySelector('.variable-new-value') as HTMLInputElement;
+      
+      if (nameInput && valueInput) {
+        const varName = nameInput.value.trim();
+        const varValue = valueInput.value.trim();
+        
+        if (varName && varValue) {
+          // Ensure variable name starts with --
+          const finalName = varName.startsWith('--') ? varName : `--${varName}`;
+          this.createCSSVariable(finalName, varValue);
+          nameInput.value = '';
+          valueInput.value = '';
+        }
+      }
+    });
+  }
+
+  /**
+   * Task 7: Create new CSS variable
+   */
+  private createCSSVariable(name: string, value: string): void {
+    this.cssVariables.set(name, value);
+    this.addVariableToStylesheet(name, value);
+    this.renderCommonProperties(); // Refresh to show new variable
+  }
+
+  /**
+   * Task 7: Update CSS variable
+   */
+  private updateCSSVariable(name: string, newValue: string): void {
+    this.cssVariables.set(name, newValue);
+    this.updateVariableInStylesheet(name, newValue);
+    
+    // Update all properties using this variable
+    this.propertyVariables.forEach((props, selector) => {
+      props.forEach((varName, property) => {
+        if (varName === name) {
+          // Refresh the displayed computed value
+          this.renderCommonProperties();
+          this.renderAdvancedProperties();
+        }
+      });
+    });
+    
+    this.updatePreview();
+  }
+
+  /**
+   * Task 7: Delete CSS variable
+   */
+  private deleteCSSVariable(name: string): void {
+    this.cssVariables.delete(name);
+    this.removeVariableFromStylesheet(name);
+    this.renderCommonProperties(); // Refresh to remove variable
+  }
+
+  /**
+   * Task 7: Add variable to stylesheet
+   */
+  private addVariableToStylesheet(name: string, value: string): void {
+    const style = document.createElement('style');
+    style.id = `css-var-${name.replace(/[^a-z0-9]/gi, '-')}`;
+    style.textContent = `:root { ${name}: ${value}; }`;
+    document.head.appendChild(style);
+  }
+
+  /**
+   * Task 7: Update variable in stylesheet
+   */
+  private updateVariableInStylesheet(name: string, value: string): void {
+    const styleId = `css-var-${name.replace(/[^a-z0-9]/gi, '-')}`;
+    let style = document.getElementById(styleId) as HTMLStyleElement;
+    
+    if (!style) {
+      this.addVariableToStylesheet(name, value);
+      return;
+    }
+    
+    style.textContent = `:root { ${name}: ${value}; }`;
+  }
+
+  /**
+   * Task 7: Remove variable from stylesheet
+   */
+  private removeVariableFromStylesheet(name: string): void {
+    const styleId = `css-var-${name.replace(/[^a-z0-9]/gi, '-')}`;
+    const style = document.getElementById(styleId);
+    if (style) {
+      style.remove();
     }
   }
 
@@ -645,7 +917,7 @@ export class CSSEditorPanel {
           }).join('') + `
             <div class="spacing-collapse-container">
               <button class="spacing-collapse-btn" data-spacing="${prop}" title="${t('ui.spacing.collapseToGeneral', { property: translateProperty(prop) })}">
-                ⚙️ ${t('ui.spacing.collapseToGeneral', { property: translateProperty(prop) })}
+                ${getIconHTML(icons.settings)} ${t('ui.spacing.collapseToGeneral', { property: translateProperty(prop) })}
               </button>
             </div>
           `;
@@ -661,7 +933,7 @@ export class CSSEditorPanel {
               <label>
                 ${translateProperty(prop)}
                 <button class="spacing-expand-btn" data-spacing="${prop}" title="${t('ui.spacing.expandToSides')}">
-                  ⚙️
+                  ${getIconHTML(icons.settings)}
                 </button>
               </label>
               ${inputType === 'size' ? createSizeInput(prop, currentValue) : `<input type="text" data-property="${prop}" value="${currentValue}" placeholder="${t('ui.inputs.enterValue')}" />`}
@@ -675,7 +947,7 @@ export class CSSEditorPanel {
       
       // Task 12: Add warning icon to group header if dependency not met
       const warningIcon = !dependencyMet && group.dependsOn ? 
-        `<span class="dependency-warning" title="${dependencyWarning}">⚠️</span>` : '';
+        `<span class="dependency-warning" title="${dependencyWarning}">${getIconHTML(icons.alertTriangle)}</span>` : '';
       
       return `
         <div class="property-group ${!dependencyMet ? 'dependency-unmet' : ''}" data-group="${group.name}">
@@ -690,13 +962,16 @@ export class CSSEditorPanel {
           </div>
         </div>
       `;
-    }).join('');
+    }).join('') + this.renderCSSVariablesGroup();
 
     this.attachPropertyListeners(container);
     this.attachGroupToggleListeners();
     this.attachSpacingToggleListeners();
     this.attachCompoundPropertyListeners();
     this.attachMultiValuePropertyListeners();
+    this.attachMediaQueryListeners();  // Task 5: Attach MQ listeners
+    this.attachVariableListeners();    // Task 6: Attach variable listeners
+    this.attachVariablesPanelListeners(); // Task 7: Attach variables panel listeners
   }
 
   /**
@@ -723,57 +998,205 @@ export class CSSEditorPanel {
     const isCustomValue = !!trimmedValue && !hasSuggestion;
     const translatedProp = translateProperty(prop);
     
+    // Task 5: Get media query context for this property
+    const mqContext = this.getPropertyMediaQueryContext(prop);
+    const mqIcon = this.renderMediaQueryIcon(prop, mqContext);
+    
+    // Task 6: Check if property is using a CSS variable
+    const variableName = this.getPropertyVariable(prop);
+    const varIcon = this.renderVariableIcon(prop, variableName);
+    
+    if (variableName) {
+      // Property is using a CSS variable - show variable display instead of inputs
+      const computedValue = this.cssVariables.get(variableName) || 'unknown';
+      return `
+        <div class="css-property ${isModified ? 'active' : 'disabled'} ${isSpacingSide ? 'spacing-side' : ''}" data-property="${prop}">
+          <label>${translatedProp}</label>
+          <div class="property-input-with-mq">
+            <div class="variable-display" data-property="${prop}">
+              <div class="variable-name">${variableName}</div>
+              <div class="variable-computed-value">${computedValue}</div>
+              <button class="variable-remove-btn" data-property="${prop}" title="Remove variable">
+                ${getIconHTML(icons.close)}
+              </button>
+            </div>
+            ${mqIcon}
+            ${varIcon}
+          </div>
+        </div>
+      `;
+    }
+    
     // If property has predefined suggestions (like display, position), use dropdown
     if (suggestions.length > 0) {
       return `
         <div class="css-property ${isModified ? 'active' : 'disabled'} ${isSpacingSide ? 'spacing-side' : ''}" data-property="${prop}">
           <label>${translatedProp}</label>
-          <select data-property="${prop}">
-            <option value="">${t('ui.inputs.selectOption')}</option>
-            ${suggestions.map(val => 
-              `<option value="${val}" ${trimmedValue === val ? 'selected' : ''}>${val}</option>`
-            ).join('')}
-            <option value="custom" ${isCustomValue ? 'selected' : ''}>${t('ui.inputs.customValue')}</option>
-          </select>
-          <input type="text" class="custom-property-input" data-property="${prop}" placeholder="${t('ui.inputs.enterCustomValue')}" value="${isCustomValue ? trimmedValue : ''}" ${isCustomValue ? '' : 'style="display:none;"'} />
+          <div class="property-input-with-mq">
+            <select data-property="${prop}">
+              <option value="">${t('ui.inputs.selectOption')}</option>
+              ${suggestions.map(val => 
+                `<option value="${val}" ${trimmedValue === val ? 'selected' : ''}>${val}</option>`
+              ).join('')}
+              <option value="custom" ${isCustomValue ? 'selected' : ''}>${t('ui.inputs.customValue')}</option>
+            </select>
+            <input type="text" class="custom-property-input" data-property="${prop}" placeholder="${t('ui.inputs.enterCustomValue')}" value="${isCustomValue ? trimmedValue : ''}" ${isCustomValue ? '' : 'style="display:none;"'} />
+            ${mqIcon}
+            ${varIcon}
+          </div>
         </div>
       `;
     } else if (inputType === 'color') {
       return `
         <div class="css-property ${isModified ? 'active' : 'disabled'} ${isSpacingSide ? 'spacing-side' : ''}" data-property="${prop}">
           <label>${translatedProp}</label>
-          ${createColorInput(prop, currentValue)}
+          <div class="property-input-with-mq">
+            ${createColorInput(prop, currentValue)}
+            ${mqIcon}
+            ${varIcon}
+          </div>
         </div>
       `;
     } else if (inputType === 'size') {
       return `
         <div class="css-property ${isModified ? 'active' : 'disabled'} ${isSpacingSide ? 'spacing-side' : ''}" data-property="${prop}">
           <label>${translatedProp}</label>
-          ${createSizeInput(prop, currentValue)}
+          <div class="property-input-with-mq">
+            ${createSizeInput(prop, currentValue)}
+            ${mqIcon}
+            ${varIcon}
+          </div>
         </div>
       `;
     } else if (inputType === 'filter') {
       return `
         <div class="css-property ${isModified ? 'active' : 'disabled'} ${isSpacingSide ? 'spacing-side' : ''}" data-property="${prop}">
           <label>${translatedProp}</label>
-          ${createFilterInput(prop, currentValue)}
+          <div class="property-input-with-mq">
+            ${createFilterInput(prop, currentValue)}
+            ${mqIcon}
+            ${varIcon}
+          </div>
         </div>
       `;
     } else if (inputType === 'number') {
       return `
         <div class="css-property ${isModified ? 'active' : 'disabled'} ${isSpacingSide ? 'spacing-side' : ''}" data-property="${prop}">
           <label>${translatedProp}</label>
-          ${createPercentageInput(prop, currentValue)}
+          <div class="property-input-with-mq">
+            ${createPercentageInput(prop, currentValue)}
+            ${mqIcon}
+            ${varIcon}
+          </div>
         </div>
       `;
     } else {
       return `
         <div class="css-property ${isModified ? 'active' : 'disabled'} ${isSpacingSide ? 'spacing-side' : ''}" data-property="${prop}">
           <label>${translatedProp}</label>
-          <input type="text" data-property="${prop}" value="${currentValue}" placeholder="${t('ui.inputs.enterValue')}" />
+          <div class="property-input-with-mq">
+            <input type="text" data-property="${prop}" value="${currentValue}" placeholder="${t('ui.inputs.enterValue')}" />
+            ${mqIcon}
+            ${varIcon}
+          </div>
         </div>
       `;
     }
+  }
+
+  /**
+   * Task 6: Get CSS variable for a property
+   */
+  private getPropertyVariable(property: string): string | null {
+    const selectorVars = this.propertyVariables.get(this.currentSelector);
+    if (!selectorVars) return null;
+    return selectorVars.get(property) || null;
+  }
+
+  /**
+   * Task 6: Render CSS variable icon
+   */
+  private renderVariableIcon(property: string, currentVariable: string | null): string {
+    const isUsingVariable = currentVariable !== null;
+    const iconClass = isUsingVariable ? 'var-icon-active' : 'var-icon';
+    
+    const variablesList = Array.from(this.cssVariables.keys());
+    const variablesOptions = variablesList.map(varName => 
+      `<button class="var-option ${currentVariable === varName ? 'selected' : ''}" data-var="${varName}" data-property="${property}">
+        ${varName}
+        <span class="var-value">${this.cssVariables.get(varName)}</span>
+      </button>`
+    ).join('');
+    
+    return `
+      <div class="variable-selector">
+        <button class="var-trigger ${iconClass}" data-property="${property}" title="CSS Variable">
+          ${getIconHTML(icons.variable)}
+        </button>
+        <div class="var-dropdown" data-property="${property}" style="display: none;">
+          <div class="var-dropdown-header">CSS Variables</div>
+          ${variablesList.length > 0 ? variablesOptions : '<div class="var-no-variables">No variables defined in :root</div>'}
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Task 5: Get media query context for a property
+   */
+  private getPropertyMediaQueryContext(property: string): MediaQueryContext {
+    const selectorMQs = this.propertyMediaQueries.get(this.currentSelector);
+    if (!selectorMQs) return 'all';
+    return selectorMQs.get(property) || 'all';
+  }
+
+  /**
+   * Task 5: Render media query icon with indicators
+   */
+  private renderMediaQueryIcon(property: string, currentContext: MediaQueryContext): string {
+    const otherContexts = this.getOtherMediaQueryContexts(property);
+    const isContextSpecific = currentContext !== 'all';
+    const hasOtherContexts = otherContexts.length > 0;
+    
+    // Icon color based on state
+    const iconClass = isContextSpecific ? 'mq-icon-active' : 'mq-icon';
+    const otherIndicator = hasOtherContexts ? `<span class="mq-other-indicator" title="Customized for other media queries">${getIconHTML(icons.alertTriangle, 'mq-alert-icon')}</span>` : '';
+    
+    return `
+      <div class="media-query-selector">
+        <button class="mq-trigger ${iconClass}" data-property="${property}" title="Media query context">
+          ${getIconHTML(icons.layers)}
+        </button>
+        ${otherIndicator}
+        <div class="mq-dropdown" data-property="${property}" style="display: none;">
+          <button class="mq-option ${currentContext === 'all' ? 'selected' : ''}" data-mq="all" data-property="${property}">All (default)</button>
+          <button class="mq-option ${currentContext === 'desktop' ? 'selected' : ''}" data-mq="desktop" data-property="${property}">${getIconHTML(icons.monitor)} Desktop</button>
+          <button class="mq-option ${currentContext === 'tablet' ? 'selected' : ''}" data-mq="tablet" data-property="${property}">${getIconHTML(icons.tablet)} Tablet</button>
+          <button class="mq-option ${currentContext === 'phone' ? 'selected' : ''}" data-mq="phone" data-property="${property}">${getIconHTML(icons.smartphone)} Phone</button>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Task 5: Get other media query contexts where property is customized
+   */
+  private getOtherMediaQueryContexts(property: string): MediaQueryContext[] {
+    const selectorMQs = this.propertyMediaQueries.get(this.currentSelector);
+    if (!selectorMQs) return [];
+    
+    const contexts: MediaQueryContext[] = [];
+    const currentContext = selectorMQs.get(property) || 'all';
+    
+    // Check if property exists in other contexts
+    (['desktop', 'tablet', 'phone'] as ViewportMode[]).forEach(mode => {
+      // Check if there's a value for this property in this mode
+      if (mode !== currentContext && selectorMQs.has(`${property}@${mode}`)) {
+        contexts.push(mode);
+      }
+    });
+    
+    return contexts;
   }
 
   /**
@@ -1297,6 +1720,202 @@ export class CSSEditorPanel {
   }
 
   /**
+   * Task 5: Attach media query selector listeners
+   */
+  private attachMediaQueryListeners(): void {
+    if (!this.panel) return;
+    
+    // MQ trigger buttons
+    const mqTriggers = this.panel.querySelectorAll('.mq-trigger');
+    mqTriggers.forEach(trigger => {
+      trigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const property = (trigger as HTMLElement).getAttribute('data-property');
+        if (!property) return;
+        
+        // Close other dropdowns
+        const allDropdowns = this.panel?.querySelectorAll('.mq-dropdown');
+        allDropdowns?.forEach(dropdown => {
+          const dropdownProp = (dropdown as HTMLElement).getAttribute('data-property');
+          if (dropdownProp !== property) {
+            (dropdown as HTMLElement).style.display = 'none';
+          }
+        });
+        
+        // Toggle this dropdown
+        const dropdown = this.panel?.querySelector(`.mq-dropdown[data-property="${property}"]`) as HTMLElement;
+        if (dropdown) {
+          dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+        }
+      });
+    });
+    
+    // MQ option buttons
+    const mqOptions = this.panel.querySelectorAll('.mq-option');
+    mqOptions.forEach(option => {
+      option.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const property = (option as HTMLElement).getAttribute('data-property');
+        const mqContext = (option as HTMLElement).getAttribute('data-mq') as MediaQueryContext;
+        if (!property || !mqContext) return;
+        
+        this.setPropertyMediaQueryContext(property, mqContext);
+        
+        // Close dropdown
+        const dropdown = this.panel?.querySelector(`.mq-dropdown[data-property="${property}"]`) as HTMLElement;
+        if (dropdown) {
+          dropdown.style.display = 'none';
+        }
+        
+        // Refresh UI to update indicators
+        this.renderCommonProperties();
+        this.renderAdvancedProperties();
+        this.attachMediaQueryListeners();
+      });
+    });
+    
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', () => {
+      const allDropdowns = this.panel?.querySelectorAll('.mq-dropdown');
+      allDropdowns?.forEach(dropdown => {
+        (dropdown as HTMLElement).style.display = 'none';
+      });
+    }, { once: true });
+  }
+
+  /**
+   * Task 5: Set media query context for a property
+   */
+  private setPropertyMediaQueryContext(property: string, context: MediaQueryContext): void {
+    let selectorMQs = this.propertyMediaQueries.get(this.currentSelector);
+    if (!selectorMQs) {
+      selectorMQs = new Map();
+      this.propertyMediaQueries.set(this.currentSelector, selectorMQs);
+    }
+    selectorMQs.set(property, context);
+  }
+
+  /**
+   * Task 6: Attach variable selector listeners
+   */
+  private attachVariableListeners(): void {
+    if (!this.panel) return;
+    
+    // Variable trigger buttons
+    const varTriggers = this.panel.querySelectorAll('.var-trigger');
+    varTriggers.forEach(trigger => {
+      trigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const property = (trigger as HTMLElement).getAttribute('data-property');
+        if (!property) return;
+        
+        // Close other dropdowns
+        const allDropdowns = this.panel?.querySelectorAll('.var-dropdown');
+        allDropdowns?.forEach(dropdown => {
+          const dropdownProp = (dropdown as HTMLElement).getAttribute('data-property');
+          if (dropdownProp !== property) {
+            (dropdown as HTMLElement).style.display = 'none';
+          }
+        });
+        
+        // Toggle this dropdown
+        const dropdown = this.panel?.querySelector(`.var-dropdown[data-property="${property}"]`) as HTMLElement;
+        if (dropdown) {
+          dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+        }
+      });
+    });
+    
+    // Variable option buttons
+    const varOptions = this.panel.querySelectorAll('.var-option');
+    varOptions.forEach(option => {
+      option.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const property = (option as HTMLElement).getAttribute('data-property');
+        const varName = (option as HTMLElement).getAttribute('data-var');
+        if (!property || !varName) return;
+        
+        this.setPropertyVariable(property, varName);
+        
+        // Close dropdown
+        const dropdown = this.panel?.querySelector(`.var-dropdown[data-property="${property}"]`) as HTMLElement;
+        if (dropdown) {
+          dropdown.style.display = 'none';
+        }
+        
+        // Refresh UI
+        this.renderCommonProperties();
+        this.renderAdvancedProperties();
+        this.attachVariableListeners();
+      });
+    });
+    
+    // Variable remove buttons
+    const varRemoveButtons = this.panel.querySelectorAll('.variable-remove-btn');
+    varRemoveButtons.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const property = (btn as HTMLElement).getAttribute('data-property');
+        if (!property) return;
+        
+        this.removePropertyVariable(property);
+        
+        // Refresh UI
+        this.renderCommonProperties();
+        this.renderAdvancedProperties();
+        this.attachVariableListeners();
+      });
+    });
+    
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', () => {
+      const allDropdowns = this.panel?.querySelectorAll('.var-dropdown');
+      allDropdowns?.forEach(dropdown => {
+        (dropdown as HTMLElement).style.display = 'none';
+      });
+    }, { once: true });
+  }
+
+  /**
+   * Task 6: Set CSS variable for a property
+   */
+  private setPropertyVariable(property: string, variableName: string): void {
+    let selectorVars = this.propertyVariables.get(this.currentSelector);
+    if (!selectorVars) {
+      selectorVars = new Map();
+      this.propertyVariables.set(this.currentSelector, selectorVars);
+    }
+    selectorVars.set(property, variableName);
+    
+    // Update the property value to use the variable
+    const varValue = this.cssVariables.get(variableName);
+    if (varValue) {
+      this.currentStyles.set(property, `var(${variableName})`);
+      this.modifiedProperties.add(property);
+      this.updatePreview();
+    }
+  }
+
+  /**
+   * Task 6: Remove CSS variable from a property
+   */
+  private removePropertyVariable(property: string): void {
+    const selectorVars = this.propertyVariables.get(this.currentSelector);
+    if (selectorVars) {
+      const varName = selectorVars.get(property);
+      if (varName) {
+        // Set property to the computed value of the variable
+        const computedValue = this.cssVariables.get(varName);
+        if (computedValue) {
+          this.currentStyles.set(property, computedValue);
+        }
+        selectorVars.delete(property);
+      }
+    }
+    this.updatePreview();
+  }
+
+  /**
    * Add a new shadow to a multi-value property
    */
   private addShadow(property: string): void {
@@ -1464,6 +2083,103 @@ export class CSSEditorPanel {
         }
       });
     });
+  }
+
+  /**
+   * Task 7: Render variables management panel
+   */
+  private renderVariablesPanel(): string {
+    const variablesList = Array.from(this.cssVariables.entries());
+    
+    const variablesHTML = variablesList.map(([varName, value]) => `
+      <div class="variable-item" data-var="${varName}">
+        <div class="variable-item-header">
+          <span class="variable-item-name">${varName}</span>
+          <div class="variable-item-actions">
+            <button class="variable-edit-btn" data-var="${varName}" title="Edit variable">
+              ${getIconHTML(icons.edit)}
+            </button>
+            <button class="variable-delete-btn" data-var="${varName}" title="Delete variable">
+              ${getIconHTML(icons.close)}
+            </button>
+          </div>
+        </div>
+        <div class="variable-item-value">
+          <input type="text" class="variable-value-input" data-var="${varName}" value="${value}" />
+        </div>
+      </div>
+    `).join('');
+    
+    return `
+      <div class="variables-panel-header">
+        <h3>CSS Variables Manager</h3>
+        <button class="variables-panel-close" title="Close">${getIconHTML(icons.close)}</button>
+      </div>
+      <div class="variables-panel-content">
+        <div class="variables-list">
+          ${variablesList.length > 0 ? variablesHTML : '<div class="no-variables">No CSS variables defined. Create one below.</div>'}
+        </div>
+        <div class="variable-create-section">
+          <h4>Create New Variable</h4>
+          <div class="variable-create-form">
+            <input type="text" class="variable-new-name" placeholder="--variable-name" />
+            <input type="text" class="variable-new-value" placeholder="Value (e.g., #ff0000)" />
+            <button class="variable-create-btn">${getIconHTML(icons.plus)} Create</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Task 7: Render CSS Variables as a property group
+   */
+  private renderCSSVariablesGroup(): string {
+    const variablesList = Array.from(this.cssVariables.entries());
+    const isCollapsed = this.collapsedGroups.has('css-variables');
+    const hasVariables = variablesList.length > 0;
+    
+    const variablesHTML = variablesList.map(([varName, value]) => `
+      <div class="variable-item" data-var="${varName}">
+        <div class="variable-item-header">
+          <span class="variable-item-name">${varName}</span>
+          <div class="variable-item-actions">
+            <button class="variable-edit-btn" data-var="${varName}" title="Edit variable">
+              ${getIconHTML(icons.edit)}
+            </button>
+            <button class="variable-delete-btn" data-var="${varName}" title="Delete variable">
+              ${getIconHTML(icons.close)}
+            </button>
+          </div>
+        </div>
+        <div class="variable-item-value">
+          <input type="text" class="variable-value-input" data-var="${varName}" value="${value}" />
+        </div>
+      </div>
+    `).join('');
+    
+    return `
+      <div class="property-group css-variables-group" data-group="css-variables">
+        <div class="property-group-header" data-group="css-variables">
+          <div class="property-group-indicator ${hasVariables ? 'active' : ''}"></div>
+          <div class="property-group-title">CSS Variables</div>
+          <div class="property-group-toggle ${isCollapsed ? 'collapsed' : ''}">▼</div>
+        </div>
+        <div class="property-group-content ${isCollapsed ? 'collapsed' : ''}">
+          <div class="variables-list">
+            ${variablesList.length > 0 ? variablesHTML : '<div class="no-variables">No CSS variables defined. Create one below.</div>'}
+          </div>
+          <div class="variable-create-section">
+            <h4>Create New Variable</h4>
+            <div class="variable-create-form">
+              <input type="text" class="variable-new-name" placeholder="--variable-name" />
+              <input type="text" class="variable-new-value" placeholder="Value (e.g., #ff0000)" />
+              <button class="variable-create-btn">${getIconHTML(icons.plus)} Create</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
   }
 
   /**
@@ -1668,42 +2384,70 @@ export class CSSEditorPanel {
         target.addEventListener('input', () => {
           this.updateProperty(property, target.value);
         });
+      } else if (target.classList.contains('size-number-input')) {
+        // Task 4: Handle size number input - show popover on click
+        target.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.showSliderPopover(property, target as HTMLInputElement, container as HTMLElement);
+        });
+        target.addEventListener('input', () => {
+          const slider = container.querySelector(`.size-slider[data-property="${property}"]`) as HTMLInputElement;
+          const valueDisplay = container.querySelector(`.slider-popover[data-property="${property}"] .slider-value-display`) as HTMLElement;
+          const numeric = parseFloat((target as HTMLInputElement).value);
+          if (slider && !Number.isNaN(numeric)) {
+            slider.value = mapValueToSizeSlider(numeric).toString();
+            if (valueDisplay) {
+              valueDisplay.textContent = numeric.toString();
+            }
+          }
+          this.handleSizeInputChange(property);
+        });
       } else if (target.classList.contains('size-slider')) {
-        // Handle size slider (non-linear mapping)
+        // Task 4: Handle size slider in popover
         target.addEventListener('input', () => {
           const numberInput = container.querySelector(`.size-number-input[data-property="${property}"]`) as HTMLInputElement;
+          const valueDisplay = container.querySelector(`.slider-popover[data-property="${property}"] .slider-value-display`) as HTMLElement;
           const sliderVal = parseFloat((target as HTMLInputElement).value);
           const mappedValue = mapSizeSliderToValue(sliderVal);
           if (numberInput) {
             numberInput.value = mappedValue.toString();
           }
-          this.handleSizeInputChange(property);
-        });
-      } else if (target.classList.contains('size-number-input')) {
-        // Handle size number input
-        target.addEventListener('input', () => {
-          const slider = container.querySelector(`.size-slider[data-property="${property}"]`) as HTMLInputElement;
-          const numeric = parseFloat((target as HTMLInputElement).value);
-          if (slider && !Number.isNaN(numeric)) {
-            slider.value = mapValueToSizeSlider(numeric).toString();
+          if (valueDisplay) {
+            valueDisplay.textContent = mappedValue.toString();
           }
           this.handleSizeInputChange(property);
         });
-      } else if (target.classList.contains('percentage-slider')) {
-        // Handle percentage slider
+      } else if (target.classList.contains('percentage-number-input')) {
+        // Task 4: Handle percentage number input - show popover on click
+        target.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.showSliderPopover(property, target as HTMLInputElement, container as HTMLElement);
+        });
         target.addEventListener('input', () => {
-          const numberInput = container.querySelector(`.percentage-number-input[data-property="${property}"]`) as HTMLInputElement;
-          if (numberInput) {
-            numberInput.value = target.value;
+          const slider = container.querySelector(`.percentage-slider[data-property="${property}"]`) as HTMLInputElement;
+          const valueDisplay = container.querySelector(`.slider-popover[data-property="${property}"] .slider-value-display`) as HTMLElement;
+          if (slider) {
+            slider.value = target.value;
+          }
+          if (valueDisplay) {
+            const numValue = parseFloat(target.value);
+            const isOpacity = property === 'opacity';
+            valueDisplay.textContent = isOpacity ? `${(numValue * 100).toFixed(0)}%` : numValue.toFixed(1);
           }
           this.updateProperty(property, target.value);
         });
-      } else if (target.classList.contains('percentage-number-input')) {
-        // Handle percentage number input
+      } else if (target.classList.contains('percentage-slider')) {
+        // Task 4: Handle percentage slider in popover
         target.addEventListener('input', () => {
-          const slider = container.querySelector(`.percentage-slider[data-property="${property}"]`) as HTMLInputElement;
-          if (slider) {
-            slider.value = target.value;
+          const numberInput = container.querySelector(`.percentage-number-input[data-property="${property}"]`) as HTMLInputElement;
+          const valueDisplay = container.querySelector(`.slider-popover[data-property="${property}"] .slider-value-display`) as HTMLElement;
+          if (numberInput) {
+            numberInput.value = target.value;
+          }
+          if (valueDisplay) {
+            const numValue = parseFloat(target.value);
+            const isOpacity = property === 'opacity';
+            valueDisplay.textContent = isOpacity ? `${(numValue * 100).toFixed(0)}%` : numValue.toFixed(1);
           }
           this.updateProperty(property, target.value);
         });
@@ -2024,30 +2768,61 @@ export class CSSEditorPanel {
     }
     
     const cssBlocks: string[] = [];
+    const mediaQueryBlocks: Map<string, string[]> = new Map();
     
     this.allElementChanges.forEach((elementData, selector) => {
-      const properties = Array.from(elementData.modifiedProperties)
-        .map(prop => {
-          const value = elementData.styles.get(prop);
-          return value ? `  ${prop}: ${value};` : null;
-        })
-        .filter(line => line !== null)
-        .join('\n');
+      // Task 5: Separate properties by media query context
+      const baseProperties: string[] = [];
+      const mqProperties: Map<MediaQueryContext, string[]> = new Map();
       
-      if (properties) {
-        cssBlocks.push(`${selector} {\n${properties}\n}`);
+      const selectorMQs = this.propertyMediaQueries.get(selector);
+      
+      Array.from(elementData.modifiedProperties).forEach(prop => {
+        const value = elementData.styles.get(prop);
+        if (!value) return;
+        
+        const context = selectorMQs?.get(prop) || 'all';
+        const cssLine = `  ${prop}: ${value};`;
+        
+        if (context === 'all') {
+          baseProperties.push(cssLine);
+        } else {
+          if (!mqProperties.has(context)) {
+            mqProperties.set(context, []);
+          }
+          mqProperties.get(context)!.push(cssLine);
+        }
+      });
+      
+      // Add base properties block
+      if (baseProperties.length > 0) {
+        cssBlocks.push(`${selector} {\n${baseProperties.join('\n')}\n}`);
+      }
+      
+      // Add media query specific blocks
+      mqProperties.forEach((properties, context) => {
+        if (properties.length > 0) {
+          const mqString = this.getMediaQueryForViewportMode(context as ViewportMode);
+          if (!mediaQueryBlocks.has(mqString)) {
+            mediaQueryBlocks.set(mqString, []);
+          }
+          mediaQueryBlocks.get(mqString)!.push(`${selector} {\n${properties.join('\n')}\n}`);
+        }
+      });
+    });
+    
+    // Combine all CSS
+    let css = cssBlocks.join('\n\n');
+    
+    // Add media query blocks
+    mediaQueryBlocks.forEach((blocks, mqString) => {
+      if (blocks.length > 0) {
+        const mqContent = blocks.join('\n\n');
+        css += `\n\n${mqString} {\n${mqContent.split('\n').map(line => line ? '  ' + line : line).join('\n')}\n}`;
       }
     });
     
-    const cssContent = cssBlocks.join('\n\n');
-    
-    // Wrap in media query if in iframe mode and not desktop
-    if (this.options.iframeMode && this.viewportMode !== 'desktop') {
-      const mediaQuery = this.getMediaQueryForViewportMode(this.viewportMode);
-      return `${mediaQuery} {\n${cssContent.split('\n').map(line => line ? '  ' + line : line).join('\n')}\n}`;
-    }
-    
-    return cssContent;
+    return css;
   }
 
   /**
@@ -2667,6 +3442,128 @@ export class CSSEditorPanel {
   }
 
   /**
+   * Task 4: Show slider popover when clicking numeric input
+   */
+  private showSliderPopover(property: string, input: HTMLInputElement, container: HTMLElement): void {
+    // Close any other open popovers
+    const allPopovers = document.querySelectorAll('.slider-popover');
+    allPopovers.forEach(p => {
+      if (p.getAttribute('data-property') !== property) {
+        (p as HTMLElement).style.display = 'none';
+      }
+    });
+    
+    const popover = container.querySelector(`.slider-popover[data-property="${property}"]`) as HTMLElement;
+    if (!popover) return;
+    
+    // Toggle popover
+    if (popover.style.display === 'none' || popover.style.display === '') {
+      popover.style.display = 'block';
+      
+      // Position popover above the input
+      const inputRect = input.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+      popover.style.position = 'absolute';
+      popover.style.top = `${inputRect.top - containerRect.top - popover.offsetHeight - 5}px`;
+      popover.style.left = `${inputRect.left - containerRect.left}px`;
+      
+      // Add click outside listener to close
+      setTimeout(() => {
+        document.addEventListener('click', this.closeSliderPopovers.bind(this), { once: true });
+      }, 0);
+    } else {
+      popover.style.display = 'none';
+    }
+  }
+
+  /**
+   * Task 4: Close all slider popovers
+   */
+  private closeSliderPopovers(): void {
+    const allPopovers = document.querySelectorAll('.slider-popover');
+    allPopovers.forEach(p => {
+      (p as HTMLElement).style.display = 'none';
+    });
+  }
+
+  /**
+   * Roadmap Task 1: Handle resize start
+   */
+  private handleResizeStart(e: MouseEvent): void {
+    e.preventDefault();
+    this.isResizing = true;
+    this.resizeStartX = e.clientX;
+    this.resizeStartY = e.clientY;
+    
+    if (this.panel) {
+      const rect = this.panel.getBoundingClientRect();
+      this.resizeStartWidth = rect.width;
+      this.resizeStartHeight = rect.height;
+    }
+    
+    // Create bound handlers for proper cleanup
+    this.boundHandleResizeMove = this.handleResizeMove.bind(this);
+    this.boundHandleResizeEnd = this.handleResizeEnd.bind(this);
+    
+    document.addEventListener('mousemove', this.boundHandleResizeMove);
+    document.addEventListener('mouseup', this.boundHandleResizeEnd);
+    
+    // Add resizing class for visual feedback
+    this.panel?.classList.add('resizing');
+  }
+
+  /**
+   * Roadmap Task 1: Handle resize move
+   */
+  private handleResizeMove(e: MouseEvent): void {
+    if (!this.isResizing || !this.panel) return;
+    
+    const maxSize = window.innerWidth * 0.5; // 50% of screen
+    const minSize = 350; // 350px minimum
+    
+    if (this.anchorPosition === 'right') {
+      const deltaX = this.resizeStartX - e.clientX;
+      const newWidth = Math.max(minSize, Math.min(maxSize, this.resizeStartWidth + deltaX));
+      this.panel.style.width = `${newWidth}px`;
+    } else if (this.anchorPosition === 'left') {
+      const deltaX = e.clientX - this.resizeStartX;
+      const newWidth = Math.max(minSize, Math.min(maxSize, this.resizeStartWidth + deltaX));
+      this.panel.style.width = `${newWidth}px`;
+    } else if (this.anchorPosition === 'bottom') {
+      const deltaY = this.resizeStartY - e.clientY;
+      const maxHeight = window.innerHeight * 0.5;
+      const minHeight = 300;
+      const newHeight = Math.max(minHeight, Math.min(maxHeight, this.resizeStartHeight + deltaY));
+      this.panel.style.height = `${newHeight}px`;
+    } else if (this.anchorPosition === 'top') {
+      const deltaY = e.clientY - this.resizeStartY;
+      const maxHeight = window.innerHeight * 0.5;
+      const minHeight = 300;
+      const newHeight = Math.max(minHeight, Math.min(maxHeight, this.resizeStartHeight + deltaY));
+      this.panel.style.height = `${newHeight}px`;
+    }
+  }
+
+  /**
+   * Roadmap Task 1: Handle resize end
+   */
+  private handleResizeEnd(): void {
+    this.isResizing = false;
+    
+    // Remove event listeners using stored bound handlers
+    if (this.boundHandleResizeMove) {
+      document.removeEventListener('mousemove', this.boundHandleResizeMove);
+      this.boundHandleResizeMove = null;
+    }
+    if (this.boundHandleResizeEnd) {
+      document.removeEventListener('mouseup', this.boundHandleResizeEnd);
+      this.boundHandleResizeEnd = null;
+    }
+    
+    this.panel?.classList.remove('resizing');
+  }
+
+  /**
    * Destroy the panel
    * Task 3: Clean up all element changes to prevent memory leaks
    */
@@ -2682,5 +3579,19 @@ export class CSSEditorPanel {
     this.allElementChanges.clear();
     // Task 5: Remove any remaining highlights
     this.removeHighlights();
+    
+    // Clean up all event listeners using stored bound handlers
+    if (this.boundHandleResizeMove) {
+      document.removeEventListener('mousemove', this.boundHandleResizeMove);
+      this.boundHandleResizeMove = null;
+    }
+    if (this.boundHandleResizeEnd) {
+      document.removeEventListener('mouseup', this.boundHandleResizeEnd);
+      this.boundHandleResizeEnd = null;
+    }
+    if (this.boundHandleDocumentClick) {
+      document.removeEventListener('click', this.boundHandleDocumentClick);
+      this.boundHandleDocumentClick = null;
+    }
   }
 }
