@@ -1,3 +1,4 @@
+import { mount, unmount } from 'svelte';
 import { ElementPicker } from './element-picker';
 import { generateUniqueSelector } from './selector-generator';
 import CSSEditorComponent from './components/CSSEditor.svelte';
@@ -36,12 +37,20 @@ export interface CSSEditorOptions {
  * Main CSSEditor class - Wrapper around Svelte component
  * Maintains backwards compatibility with the vanilla TypeScript API
  */
+type CSSEditorComponentProps = Omit<CSSEditorOptions, 'activatorSelector' | 'iframeMode'>;
+
+type CSSEditorComponentExports = {
+  show: (selector: string, element?: Element | null) => void;
+  hide: () => void;
+  clear: () => void;
+};
+
 export class CSSEditor {
   private static readonly ACTIVATOR_TEXT_INACTIVE = 'Press here to enter style editor';
   private static readonly ACTIVATOR_TEXT_ACTIVE = 'Click any element to edit its styles';
   
   private picker: ElementPicker;
-  private component: CSSEditorComponent | null = null;
+  private component: CSSEditorComponentExports | null = null;
   private activateButton: HTMLElement | null = null;
   private options: CSSEditorOptions;
   private iframe: HTMLIFrameElement | null = null;
@@ -58,7 +67,7 @@ export class CSSEditor {
     document.body.appendChild(this.containerElement);
     
     // Initialize the Svelte component
-    this.component = new CSSEditorComponent({
+    this.component = mount<CSSEditorComponentProps, CSSEditorComponentExports>(CSSEditorComponent, {
       target: this.containerElement,
       props: {
         loadEndpoint: options.loadEndpoint,
@@ -71,7 +80,7 @@ export class CSSEditor {
         locale: options.locale,
         buttons: options.buttons,
         showGeneratedCSS: options.showGeneratedCSS
-      }
+      },
     });
     
     // Handle iframe mode if configured
@@ -175,7 +184,7 @@ export class CSSEditor {
    */
   public destroy(): void {
     if (this.component) {
-      this.component.$destroy();
+      unmount(this.component);
       this.component = null;
     }
     

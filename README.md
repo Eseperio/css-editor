@@ -213,7 +213,9 @@ This will:
 - Serve the example pages with live reloading
 
 Available demo pages:
-- `http://localhost:3000/example/index.html` - Main demo (uses built files)
+- `http://localhost:3000/example/index.html` - Example hub (links to normal + iframe demos)
+- `http://localhost:3000/example/page-demo.html` - Normal page demo (HMR in Vite, dist in server.js)
+- `http://localhost:3000/example/iframe-demo.html` - Iframe demo (HMR in Vite, dist in server.js)
 - `http://localhost:3000/example/dev.html` - Development demo (imports source directly with HMR)
 - `http://localhost:3000/example/esm-demo.html` - ESM demo
 - `http://localhost:3000/example/svelte-test.html` - Svelte test

@@ -197,9 +197,11 @@ Created comprehensive documentation:
    - Development instructions
 
 3. **Example Pages**
+   - `example/page-demo.html` - Normal page demo (UMD)
+   - `example/iframe-demo.html` - Iframe demo
    - `example/svelte-test.html` - UMD demo
    - `example/esm-demo.html` - ESM demo
-   - Original `example/index.html` still works
+   - `example/index.html` - Demo hub
 
 ## Benefits Analysis
 

@@ -71,11 +71,21 @@
     </p>
   </div>
 
-  <!-- Load the CSS Editor library -->
-  <script src="../dist/css-editor.js"></script>
-  <script>
+  <script type="module">
+    const isVite = Boolean(import.meta.env && import.meta.env.DEV);
+
+    if (!isVite) {
+      const css = document.createElement('link');
+      css.rel = 'stylesheet';
+      css.href = '../dist/css-editor.css';
+      document.head.appendChild(css);
+    }
+
+    const modulePath = isVite ? '/src/index.ts' : '../dist/css-editor.esm.js';
+    const { CSSEditor } = await import(modulePath);
+
     // Initialize the CSS Editor in iframe mode
-    const editor = new CSSEditor.CSSEditor({
+    const editor = new CSSEditor({
       // Enable iframe mode
       iframeMode: {
         url: 'iframe-content.html', // URL to load in iframe
