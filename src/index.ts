@@ -1,4 +1,5 @@
 import { mount, unmount } from 'svelte';
+import './styles/editor-panel.scss';
 import { ElementPicker } from './element-picker';
 import { generateUniqueSelector } from './selector-generator';
 import CSSEditorComponent from './components/CSSEditor.svelte';
@@ -37,7 +38,7 @@ export interface CSSEditorOptions {
  * Main CSSEditor class - Wrapper around Svelte component
  * Maintains backwards compatibility with the vanilla TypeScript API
  */
-type CSSEditorComponentProps = Omit<CSSEditorOptions, 'activatorSelector' | 'iframeMode'>;
+type CSSEditorComponentProps = Omit<CSSEditorOptions, 'activatorSelector'>;
 
 type CSSEditorComponentExports = {
   show: (selector: string, element?: Element | null) => void;
@@ -79,7 +80,8 @@ export class CSSEditor {
         fontFamilies: options.fontFamilies,
         locale: options.locale,
         buttons: options.buttons,
-        showGeneratedCSS: options.showGeneratedCSS
+        showGeneratedCSS: options.showGeneratedCSS,
+        iframeMode: options.iframeMode
       },
     });
     

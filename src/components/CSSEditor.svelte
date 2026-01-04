@@ -3,7 +3,7 @@
   import { setupI18n } from '../i18n/setup';
   import EditorPanel from './EditorPanel.svelte';
   import { showPanel, hidePanel } from '../stores/ui';
-  import { setCurrentSelector, setCurrentElement, clearEditorState } from '../stores/editorState';
+  import { setActiveElement, clearEditorState } from '../stores/editorState';
   
   // Props - matches CSSEditorOptions interface
   export let loadEndpoint: string | undefined = undefined;
@@ -14,6 +14,14 @@
   export let stylesUrl: string | undefined = undefined;
   export let fontFamilies: string[] | undefined = undefined;
   export let locale: string | undefined = undefined;
+  export let iframeMode: {
+    url: string;
+    viewportSizes?: {
+      desktop?: number;
+      tablet?: number;
+      phone?: number;
+    };
+  } | undefined = undefined;
   export let buttons: {
     save?: { label?: string; visible?: boolean };
     load?: { label?: string; visible?: boolean };
@@ -33,7 +41,8 @@
     fontFamilies,
     locale,
     buttons,
-    showGeneratedCSS
+    showGeneratedCSS,
+    iframeMode
   };
   
   // Initialize i18n on mount
@@ -45,8 +54,7 @@
    * Public methods that can be called via component instance
    */
   export function show(selector: string, element: Element | null = null) {
-    setCurrentSelector(selector);
-    setCurrentElement(element);
+    setActiveElement(selector, element);
     showPanel();
   }
   

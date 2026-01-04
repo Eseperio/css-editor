@@ -1,143 +1,55 @@
 <script lang="ts">
-  import { _ } from '../i18n/setup';
   import { createEventDispatcher } from 'svelte';
-  
-  const dispatch = createEventDispatcher();
-  
+  import { rgbToHex } from '../property-inputs';
+
   export let property: string;
+  export let label: string;
   export let value: string = '#000000';
-  
-  // Parse value to get color in hex format
-  function normalizeColor(val: string): string {
-    if (!val) return '#000000';
-    
-    // If already hex, return it
-    if (val.startsWith('#')) return val;
-    
-    // For other formats, we'll just use the value as-is in text input
-    return val;
-  }
-  
-  let colorValue = normalizeColor(value);
-  let textValue = value;
-  
+  export let modified: boolean = false;
+  export let removable: boolean = false;
+
+  const dispatch = createEventDispatcher();
+
   function handleColorChange(event: Event) {
     const target = event.target as HTMLInputElement;
-    colorValue = target.value;
-    textValue = target.value;
     dispatch('change', { property, value: target.value });
   }
-  
+
   function handleTextChange(event: Event) {
     const target = event.target as HTMLInputElement;
-    textValue = target.value;
     dispatch('change', { property, value: target.value });
-    
-    // Update color picker if valid hex
-    if (target.value.startsWith('#')) {
-      colorValue = target.value;
-    }
   }
-  
+
   function handleRemove() {
     dispatch('remove', { property });
   }
 </script>
 
-<div class="color-input">
-  <label for="{property}-color">
-    <span class="property-label">{property}</span>
-  </label>
-  
-  <div class="input-wrapper">
-    <input
-      id="{property}-color"
-      type="color"
-      value={colorValue}
-      on:input={handleColorChange}
-      title={$_('ui.inputs.pickColor')}
-      class="color-picker"
-    />
-    
-    <input
-      id="{property}-text"
-      type="text"
-      value={textValue}
-      on:input={handleTextChange}
-      placeholder="e.g. #ff0000, rgb(255,0,0)"
-      class="color-text"
-    />
-    
-    <button 
-      class="remove-btn"
-      on:click={handleRemove}
-      title={$_('ui.inputs.remove')}
-      type="button"
-    >
-      ×
-    </button>
+<div class="css-property" class:active={modified} class:disabled={!modified} data-property={property}>
+  <label>{label}</label>
+  <div class="property-input-with-mq">
+    <div class="property-input-group color-input-group">
+      <input
+        class="color-picker"
+        type="color"
+        data-property={property}
+        value={rgbToHex(value || '#000000')}
+        on:input={handleColorChange}
+      />
+      <input
+        class="color-text-input"
+        type="text"
+        data-property={property}
+        value={value}
+        on:input={handleTextChange}
+        placeholder="e.g., #000000 or rgb(0,0,0)"
+      />
+    </div>
+
+    {#if removable}
+      <button class="property-remove-btn" on:click={handleRemove} type="button">
+        x
+      </button>
+    {/if}
   </div>
 </div>
-
-<style lang="scss">
-  .color-input {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-  }
-  
-  .property-label {
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: var(--text-color, #333);
-  }
-  
-  .input-wrapper {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-  }
-  
-  .color-picker {
-    width: 50px;
-    height: 40px;
-    padding: 2px;
-    border: 1px solid var(--border-color, #ddd);
-    border-radius: 4px;
-    cursor: pointer;
-    background: var(--input-bg, #fff);
-  }
-  
-  .color-text {
-    flex: 1;
-    padding: 0.5rem;
-    border: 1px solid var(--border-color, #ddd);
-    border-radius: 4px;
-    font-size: 0.875rem;
-    background: var(--input-bg, #fff);
-    color: var(--text-color, #333);
-    font-family: 'Courier New', monospace;
-    
-    &:focus {
-      outline: none;
-      border-color: var(--primary-color, #667eea);
-    }
-  }
-  
-  .remove-btn {
-    padding: 0.25rem 0.5rem;
-    background: var(--danger-color, #ef4444);
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 1.25rem;
-    line-height: 1;
-    transition: background 0.2s;
-    
-    &:hover {
-      background: var(--danger-hover, #dc2626);
-    }
-  }
-</style>

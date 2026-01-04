@@ -1,91 +1,62 @@
 <script lang="ts">
   import { _ } from '../i18n/setup';
   import { uiState, toggleGroupCollapse, isGroupCollapsed } from '../stores/ui';
-  import { createEventDispatcher } from 'svelte';
-  
-  const dispatch = createEventDispatcher();
-  
-  export let groupName: string;
-  export let groupLabel: string;
-  export let properties: string[] = [];
-  
-  $: collapsed = isGroupCollapsed(groupName, $uiState);
-  
+  import { currentStyles, modifiedProperties } from '../stores/editorState';
+  import { SPACING_PROPERTIES, type PropertyGroup as PropertyGroupType } from '../css-properties';
+  import { icons } from '../icons';
+  import Icon from './Icon.svelte';
+
+  export let group: PropertyGroupType;
+
+  $: collapsed = isGroupCollapsed(group.name, $uiState);
+  $: groupLabel = (() => {
+    const key = `propertyGroups.${group.name}`;
+    const label = $_(key);
+    return label === key ? group.name : label;
+  })();
+
+  $: hasModifiedProperty = group.properties.some((prop) => {
+    if ($modifiedProperties.has(prop)) return true;
+    const spacingProp = SPACING_PROPERTIES.find((sp) => sp.general === prop);
+    if (!spacingProp) return false;
+    return spacingProp.sides.some((side) => $modifiedProperties.has(side));
+  });
+
+  $: dependencyMet = (() => {
+    if (!group.dependsOn) return true;
+    const currentValue = $currentStyles.get(group.dependsOn.property);
+    return currentValue ? group.dependsOn.values.includes(currentValue) : false;
+  })();
+
+  $: dependencyWarning = group.dependsOn && !dependencyMet ? group.dependsOn.warning : '';
+
   function handleToggle() {
-    toggleGroupCollapse(groupName);
+    toggleGroupCollapse(group.name);
   }
 </script>
 
-<div class="property-group" class:collapsed>
-  <button 
-    class="group-header" 
-    on:click={handleToggle}
-    type="button"
-  >
-    <span class="group-icon">{collapsed ? '▶' : '▼'}</span>
-    <span class="group-label">{groupLabel}</span>
-    <span class="group-count">{properties.length}</span>
-  </button>
-  
-  {#if !collapsed}
-    <div class="group-content">
-      <slot />
+<div
+  class="property-group"
+  class:dependency-unmet={!dependencyMet}
+  data-group={group.name}
+>
+  <div class="property-group-header" on:click={handleToggle}>
+    <div class="property-group-indicator" class:active={hasModifiedProperty}></div>
+    <div class="property-group-title">{groupLabel}</div>
+    {#if dependencyWarning}
+      <span class="dependency-warning" title={dependencyWarning}>
+        <Icon icon={icons.alertTriangle} />
+      </span>
+    {/if}
+    <div class="property-group-toggle" class:collapsed={collapsed}>
+      {#if collapsed}
+        <Icon icon={icons.chevronRight} />
+      {:else}
+        <Icon icon={icons.chevronDown} />
+      {/if}
     </div>
-  {/if}
+  </div>
+  <div class="property-group-content" class:collapsed={collapsed}>
+    <slot />
+  </div>
 </div>
-
-<style lang="scss">
-  .property-group {
-    border: 1px solid var(--border-color, #e5e7eb);
-    border-radius: 8px;
-    margin-bottom: 1rem;
-    background: var(--group-bg, #fff);
-    overflow: hidden;
-  }
-  
-  .group-header {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1rem;
-    background: var(--group-header-bg, #f9fafb);
-    border: none;
-    cursor: pointer;
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: var(--text-color, #374151);
-    transition: background 0.2s;
-    
-    &:hover {
-      background: var(--group-header-hover, #f3f4f6);
-    }
-  }
-  
-  .group-icon {
-    font-size: 0.75rem;
-    color: var(--icon-color, #9ca3af);
-    transition: transform 0.2s;
-  }
-  
-  .group-label {
-    flex: 1;
-    text-align: left;
-  }
-  
-  .group-count {
-    font-size: 0.75rem;
-    color: var(--muted-color, #9ca3af);
-    background: var(--badge-bg, #e5e7eb);
-    padding: 0.125rem 0.5rem;
-    border-radius: 12px;
-  }
-  
-  .group-content {
-    padding: 1rem;
-  }
-  
-  .collapsed .group-icon {
-    transform: rotate(0deg);
-  }
-</style>
