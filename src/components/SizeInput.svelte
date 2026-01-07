@@ -72,5 +72,7 @@
         x
       </button>
     {/if}
+
+    <slot name="icons" />
   </div>
 </div>

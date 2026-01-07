@@ -9,16 +9,19 @@ import { get } from 'svelte/store';
 export interface StylesState {
   generatedCSS: string;
   styleElement: HTMLStyleElement | null;
+  targetDocument: Document | null;
 }
 
 const createStylesStore = (): Writable<StylesState> & {
   updateCSS: (css: string) => void;
   initStyleElement: () => void;
+  setTargetDocument: (doc: Document) => void;
   getGeneratedCSS: () => string;
 } => {
   const { subscribe, set, update } = writable<StylesState>({
     generatedCSS: '',
-    styleElement: null
+    styleElement: null,
+    targetDocument: typeof document !== 'undefined' ? document : null
   });
 
   return {
@@ -32,12 +35,31 @@ const createStylesStore = (): Writable<StylesState> & {
       
       update(state => {
         if (!state.styleElement) {
-          const styleEl = document.createElement('style');
+          const doc = state.targetDocument || document;
+          const existing = doc.getElementById('css-editor-dynamic-styles') as HTMLStyleElement | null;
+          const styleEl = existing || doc.createElement('style');
           styleEl.id = 'css-editor-dynamic-styles';
-          document.head.appendChild(styleEl);
-          return { ...state, styleElement: styleEl };
+          if (!existing) {
+            doc.head.appendChild(styleEl);
+          }
+          return { ...state, styleElement: styleEl, targetDocument: doc };
         }
         return state;
+      });
+    },
+
+    setTargetDocument: (doc: Document) => {
+      update(state => {
+        const existing = doc.getElementById('css-editor-dynamic-styles') as HTMLStyleElement | null;
+        const styleEl = existing || doc.createElement('style');
+        styleEl.id = 'css-editor-dynamic-styles';
+        if (!existing) {
+          doc.head.appendChild(styleEl);
+          if (state.styleElement?.textContent) {
+            styleEl.textContent = state.styleElement.textContent;
+          }
+        }
+        return { ...state, styleElement: styleEl, targetDocument: doc };
       });
     },
     
@@ -63,9 +85,16 @@ export const stylesStore = createStylesStore();
 /**
  * Generate CSS from element changes
  */
+export interface ViewportSizes {
+  desktop?: number;
+  tablet?: number;
+  phone?: number;
+}
+
 export const generateCSS = (
   allElementChanges: Map<string, { styles: Map<string, string>, modifiedProperties: Set<string> }>,
-  propertyMediaQueries?: Map<string, Map<string, string>>
+  propertyMediaQueries?: Map<string, Map<string, string>>,
+  viewportSizes?: ViewportSizes
 ): string => {
   let css = '';
   
@@ -116,7 +145,7 @@ export const generateCSS = (
       css += styles.join('\n\n') + '\n\n';
     } else {
       // Add media query wrapper
-      const mediaQuery = getMediaQuery(mediaContext);
+      const mediaQuery = getMediaQuery(mediaContext, viewportSizes);
       css += `${mediaQuery} {\n${styles.map(s => '  ' + s.replace(/\n/g, '\n  ')).join('\n\n')}\n}\n\n`;
     }
   });
@@ -127,15 +156,15 @@ export const generateCSS = (
 /**
  * Get media query string for viewport mode
  */
-const getMediaQuery = (mode: string): string => {
+const getMediaQuery = (mode: string, viewportSizes?: ViewportSizes): string => {
   switch (mode) {
     case 'phone':
-      return '@media (max-width: 480px)';
+      return `@media (max-width: ${viewportSizes?.phone || 480}px)`;
     case 'tablet':
-      return '@media (max-width: 768px)';
+      return `@media (max-width: ${viewportSizes?.tablet || 768}px)`;
     case 'desktop':
     default:
-      return '@media (min-width: 769px)';
+      return `@media (min-width: ${viewportSizes?.desktop || 769}px)`;
   }
 };
 

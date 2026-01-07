@@ -1,4 +1,4 @@
-import { writable, derived } from 'svelte/store';
+import { writable, derived, get } from 'svelte/store';
 import type { Writable, Readable } from 'svelte/store';
 
 /**
@@ -67,9 +67,24 @@ export const panelVisible: Readable<boolean> = derived(
   $state => $state.panelVisible
 );
 
+export const selectorConfigExpanded: Readable<boolean> = derived(
+  uiState,
+  $state => $state.selectorConfigExpanded
+);
+
+export const initializeCollapsedGroups = (groups: string[]) => {
+  uiState.update(state => {
+    if (state.collapsedGroups.size > 0) return state;
+    return { ...state, collapsedGroups: new Set(groups) };
+  });
+};
+
 // Helper functions to update UI state
 export const setTheme = (newTheme: Theme) => {
   uiState.update(state => ({ ...state, theme: newTheme }));
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('css-editor-theme', newTheme);
+  }
 };
 
 export const toggleTheme = () => {
@@ -77,6 +92,10 @@ export const toggleTheme = () => {
     ...state, 
     theme: state.theme === 'light' ? 'dark' : 'light' 
   }));
+  if (typeof window !== 'undefined') {
+    const next = get(uiState).theme;
+    localStorage.setItem('css-editor-theme', next);
+  }
 };
 
 export const setViewportMode = (mode: ViewportMode) => {
@@ -91,14 +110,27 @@ export const setAnchorPosition = (position: AnchorPosition) => {
   uiState.update(state => ({ ...state, anchorPosition: position }));
 };
 
-export const toggleGroupCollapse = (groupName: string) => {
+export const toggleGroupCollapse = (groupName: string, allGroups: string[] = []) => {
   uiState.update(state => {
     const newCollapsed = new Set(state.collapsedGroups);
-    if (newCollapsed.has(groupName)) {
+    const isCollapsed = newCollapsed.has(groupName);
+
+    if (isCollapsed) {
+      if (allGroups.length > 0) {
+        const allGroupSet = new Set(allGroups);
+        const preserved = new Set(Array.from(newCollapsed).filter(name => !allGroupSet.has(name)));
+        allGroups.forEach(name => {
+          if (name !== groupName) {
+            preserved.add(name);
+          }
+        });
+        return { ...state, collapsedGroups: preserved };
+      }
       newCollapsed.delete(groupName);
     } else {
       newCollapsed.add(groupName);
     }
+
     return { ...state, collapsedGroups: newCollapsed };
   });
 };
@@ -113,6 +145,44 @@ export const toggleSpacingExpanded = (property: string) => {
     newExpanded.set(property, !newExpanded.get(property));
     return { ...state, expandedSpacing: newExpanded };
   });
+};
+
+export const setSpacingExpanded = (property: string, expanded: boolean) => {
+  uiState.update(state => {
+    const newExpanded = new Map(state.expandedSpacing);
+    newExpanded.set(property, expanded);
+    return { ...state, expandedSpacing: newExpanded };
+  });
+};
+
+export const toggleCompoundSide = (compound: string, side: string) => {
+  uiState.update(state => {
+    const newExpanded = new Map(state.expandedCompound);
+    const sides = new Set(newExpanded.get(compound) || []);
+    if (sides.has(side)) {
+      sides.delete(side);
+    } else {
+      sides.add(side);
+    }
+    newExpanded.set(compound, sides);
+    return { ...state, expandedCompound: newExpanded };
+  });
+};
+
+export const removeCompoundSide = (compound: string, side: string) => {
+  uiState.update(state => {
+    const newExpanded = new Map(state.expandedCompound);
+    const sides = new Set(newExpanded.get(compound) || []);
+    sides.delete(side);
+    newExpanded.set(compound, sides);
+    return { ...state, expandedCompound: newExpanded };
+  });
+};
+
+export const isCompoundSideActive = (compound: string, side: string, state: UIState): boolean => {
+  const sides = state.expandedCompound.get(compound);
+  if (!sides) return false;
+  return sides.has(side);
 };
 
 export const toggleSelectorConfig = () => {

@@ -1,6 +1,7 @@
 import { writable, derived } from 'svelte/store';
 import type { Writable, Readable } from 'svelte/store';
 import { CSS_PROPERTIES } from '../css-properties';
+import { stylesStore } from './styles';
 
 /**
  * Store for editor state (selector, styles, element)
@@ -24,6 +25,8 @@ export interface EditorState {
   propertyVariables: Map<string, Map<string, string>>;
   targetDocument: Document;
 }
+
+export type MediaQueryContext = 'all' | 'desktop' | 'tablet' | 'phone';
 
 export interface SelectorPart {
   selector: string;
@@ -77,6 +80,59 @@ const loadComputedStyles = (element: Element): Map<string, string> => {
   return styles;
 };
 
+const normalizeVariableName = (name: string): string => {
+  return name.startsWith('--') ? name : `--${name}`;
+};
+
+const updateVariableStylesheet = (doc: Document, name: string, value: string) => {
+  const styleId = `css-var-${name.replace(/[^a-z0-9]/gi, '-')}`;
+  let style = doc.getElementById(styleId) as HTMLStyleElement | null;
+  if (!style) {
+    style = doc.createElement('style');
+    style.id = styleId;
+    doc.head.appendChild(style);
+  }
+  style.textContent = `:root { ${name}: ${value}; }`;
+};
+
+const removeVariableStylesheet = (doc: Document, name: string) => {
+  const styleId = `css-var-${name.replace(/[^a-z0-9]/gi, '-')}`;
+  const style = doc.getElementById(styleId);
+  if (style) {
+    style.remove();
+  }
+};
+
+export const detectCSSVariables = (doc: Document = document) => {
+  const detected = new Map<string, string>();
+  const sheets = Array.from(doc.styleSheets);
+
+  sheets.forEach((sheet) => {
+    try {
+      const rules = Array.from(sheet.cssRules || []);
+      rules.forEach((rule) => {
+        if (rule instanceof CSSStyleRule && rule.selectorText === ':root') {
+          const style = rule.style;
+          for (let i = 0; i < style.length; i += 1) {
+            const prop = style[i];
+            if (prop.startsWith('--')) {
+              const value = style.getPropertyValue(prop).trim();
+              detected.set(prop, value);
+            }
+          }
+        }
+      });
+    } catch {
+      // Ignore inaccessible stylesheets.
+    }
+  });
+
+  editorState.update((state) => ({
+    ...state,
+    cssVariables: detected,
+  }));
+};
+
 const saveElementChanges = (
   state: EditorState,
   allElementChanges: Map<string, ElementStyles>,
@@ -112,11 +168,28 @@ export const modifiedProperties: Readable<Set<string>> = derived(
 
 // Helper functions to update state
 export const setCurrentSelector = (selector: string) => {
-  editorState.update(state => ({ ...state, currentSelector: selector }));
+  editorState.update(state => {
+    if (state.currentSelector === selector) {
+      return state;
+    }
+    const allElementChanges = new Map(state.allElementChanges);
+    if (state.currentSelector && allElementChanges.has(state.currentSelector)) {
+      const previous = allElementChanges.get(state.currentSelector);
+      allElementChanges.delete(state.currentSelector);
+      if (previous) {
+        allElementChanges.set(selector, previous);
+      }
+    }
+    return { ...state, currentSelector: selector, allElementChanges };
+  });
 };
 
 export const setCurrentElement = (element: Element | null) => {
   editorState.update(state => ({ ...state, currentElement: element }));
+};
+
+export const setSelectorParts = (parts: SelectorPart[]) => {
+  editorState.update(state => ({ ...state, selectorParts: parts }));
 };
 
 export const setActiveElement = (selector: string, element: Element | null) => {
@@ -126,6 +199,7 @@ export const setActiveElement = (selector: string, element: Element | null) => {
 
     const currentStyles = element ? loadComputedStyles(element) : new Map();
     let modifiedProperties = new Set<string>();
+    const targetDocument = element?.ownerDocument || state.targetDocument || document;
 
     if (selector) {
       const previousChanges = allElementChanges.get(selector);
@@ -140,6 +214,9 @@ export const setActiveElement = (selector: string, element: Element | null) => {
       }
     }
 
+    stylesStore.setTargetDocument(targetDocument);
+    detectCSSVariables(targetDocument);
+
     return {
       ...state,
       currentSelector: selector,
@@ -148,8 +225,15 @@ export const setActiveElement = (selector: string, element: Element | null) => {
       modifiedProperties,
       advancedProperties: new Set(),
       allElementChanges,
+      targetDocument,
     };
   });
+};
+
+export const setTargetDocument = (doc: Document) => {
+  editorState.update(state => ({ ...state, targetDocument: doc }));
+  stylesStore.setTargetDocument(doc);
+  detectCSSVariables(doc);
 };
 
 export const updateStyle = (property: string, value: string) => {
@@ -216,6 +300,128 @@ export const removeAdvancedProperty = (property: string) => {
   });
 };
 
+export const setPropertyMediaQueryContext = (property: string, context: MediaQueryContext) => {
+  editorState.update(state => {
+    const selector = state.currentSelector;
+    if (!selector) return state;
+    const map = new Map(state.propertyMediaQueries);
+    const selectorMQs = new Map(map.get(selector) || []);
+    selectorMQs.set(property, context);
+    map.set(selector, selectorMQs);
+    return { ...state, propertyMediaQueries: map };
+  });
+};
+
+export const getPropertyMediaQueryContext = (property: string, state: EditorState): MediaQueryContext => {
+  const selectorMQs = state.propertyMediaQueries.get(state.currentSelector);
+  if (!selectorMQs) return 'all';
+  return (selectorMQs.get(property) as MediaQueryContext) || 'all';
+};
+
+export const setPropertyVariable = (property: string, variableName: string) => {
+  editorState.update(state => {
+    const selector = state.currentSelector;
+    if (!selector) return state;
+    const selectorVars = new Map(state.propertyVariables.get(selector) || []);
+    const name = normalizeVariableName(variableName);
+    selectorVars.set(property, name);
+    const propertyVariables = new Map(state.propertyVariables);
+    propertyVariables.set(selector, selectorVars);
+
+    const varValue = state.cssVariables.get(name);
+    const currentStyles = new Map(state.currentStyles);
+    const modifiedProperties = new Set(state.modifiedProperties);
+    if (varValue) {
+      currentStyles.set(property, `var(${name})`);
+      modifiedProperties.add(property);
+    }
+
+    const allElementChanges = new Map(state.allElementChanges);
+    if (selector) {
+      allElementChanges.set(selector, {
+        styles: new Map(currentStyles),
+        modifiedProperties: new Set(modifiedProperties),
+      });
+    }
+
+    return {
+      ...state,
+      propertyVariables,
+      currentStyles,
+      modifiedProperties,
+      allElementChanges,
+    };
+  });
+};
+
+export const removePropertyVariable = (property: string) => {
+  editorState.update(state => {
+    const selector = state.currentSelector;
+    if (!selector) return state;
+    const selectorVars = new Map(state.propertyVariables.get(selector) || []);
+    const varName = selectorVars.get(property);
+    selectorVars.delete(property);
+    const propertyVariables = new Map(state.propertyVariables);
+    propertyVariables.set(selector, selectorVars);
+
+    const currentStyles = new Map(state.currentStyles);
+    if (varName) {
+      const computedValue = state.cssVariables.get(varName);
+      if (computedValue) {
+        currentStyles.set(property, computedValue);
+      }
+    }
+
+    const allElementChanges = new Map(state.allElementChanges);
+    if (selector) {
+      allElementChanges.set(selector, {
+        styles: new Map(currentStyles),
+        modifiedProperties: new Set(state.modifiedProperties),
+      });
+    }
+
+    return {
+      ...state,
+      propertyVariables,
+      currentStyles,
+      allElementChanges,
+    };
+  });
+};
+
+export const createCSSVariable = (name: string, value: string) => {
+  editorState.update(state => {
+    const doc = state.targetDocument || document;
+    const varName = normalizeVariableName(name);
+    const cssVariables = new Map(state.cssVariables);
+    cssVariables.set(varName, value);
+    updateVariableStylesheet(doc, varName, value);
+    return { ...state, cssVariables };
+  });
+};
+
+export const updateCSSVariable = (name: string, value: string) => {
+  editorState.update(state => {
+    const doc = state.targetDocument || document;
+    const varName = normalizeVariableName(name);
+    const cssVariables = new Map(state.cssVariables);
+    cssVariables.set(varName, value);
+    updateVariableStylesheet(doc, varName, value);
+    return { ...state, cssVariables };
+  });
+};
+
+export const deleteCSSVariable = (name: string) => {
+  editorState.update(state => {
+    const doc = state.targetDocument || document;
+    const varName = normalizeVariableName(name);
+    const cssVariables = new Map(state.cssVariables);
+    cssVariables.delete(varName);
+    removeVariableStylesheet(doc, varName);
+    return { ...state, cssVariables };
+  });
+};
+
 export const clearEditorState = () => {
   editorState.update(state => ({
     ...state,
@@ -226,7 +432,7 @@ export const clearEditorState = () => {
     advancedProperties: new Set(),
     allElementChanges: new Map(),
     propertyMediaQueries: new Map(),
-    cssVariables: new Map(),
+    cssVariables: new Map(state.cssVariables),
     propertyVariables: new Map(),
   }));
 };
