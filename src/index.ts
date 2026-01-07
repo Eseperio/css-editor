@@ -1,37 +1,100 @@
+import { mount, unmount } from 'svelte';
+import './styles/editor-panel.scss';
 import { ElementPicker } from './element-picker';
 import { generateUniqueSelector } from './selector-generator';
-import { CSSEditorPanel, CSSEditorOptions, ViewportMode } from './editor-panel';
+import CSSEditorComponent from './components/CSSEditor.svelte';
 
 /**
- * Main CSSEditor class
+ * CSS Editor Options Interface
  */
+export interface CSSEditorOptions {
+  loadEndpoint?: string;
+  saveEndpoint?: string;
+  onSave?: (css: string) => void;
+  onLoad?: () => Promise<string>;
+  onChange?: (css: string) => void;
+  stylesUrl?: string;
+  fontFamilies?: string[];
+  locale?: string;
+  activatorSelector?: string;
+  buttons?: {
+    save?: { label?: string; visible?: boolean };
+    load?: { label?: string; visible?: boolean };
+    export?: { label?: string; visible?: boolean };
+    clear?: { label?: string; visible?: boolean };
+  };
+  showGeneratedCSS?: boolean;
+  iframeMode?: {
+    url: string;
+    viewportSizes?: {
+      desktop?: number;
+      tablet?: number;
+      phone?: number;
+    };
+  };
+}
+
+/**
+ * Main CSSEditor class - Wrapper around Svelte component
+ * Maintains backwards compatibility with the vanilla TypeScript API
+ */
+type CSSEditorComponentProps = Omit<CSSEditorOptions, 'activatorSelector'>;
+
+type CSSEditorComponentExports = {
+  show: (selector: string, element?: Element | null) => void;
+  hide: () => void;
+  clear: () => void;
+};
+
 export class CSSEditor {
-  // Task 2: Text constants for activator button
   private static readonly ACTIVATOR_TEXT_INACTIVE = 'Press here to enter style editor';
   private static readonly ACTIVATOR_TEXT_ACTIVE = 'Click any element to edit its styles';
   
   private picker: ElementPicker;
-  private panel: CSSEditorPanel; 
+  private component: CSSEditorComponentExports | null = null;
   private activateButton: HTMLElement | null = null;
-  private options: CSSEditorOptions; // Store options for reference
+  private options: CSSEditorOptions;
   private iframe: HTMLIFrameElement | null = null;
   private iframeContainer: HTMLElement | null = null;
+  private containerElement: HTMLElement;
 
   constructor(options: CSSEditorOptions = {}) {
     this.options = options;
     this.picker = new ElementPicker();
-    this.panel = new CSSEditorPanel(options);
     
-    // Listen for viewport mode changes
+    // Create a container for the Svelte component
+    this.containerElement = document.createElement('div');
+    this.containerElement.id = 'css-editor-svelte-container';
+    document.body.appendChild(this.containerElement);
+    
+    // Initialize the Svelte component
+    this.component = mount<CSSEditorComponentProps, CSSEditorComponentExports>(CSSEditorComponent, {
+      target: this.containerElement,
+      props: {
+        loadEndpoint: options.loadEndpoint,
+        saveEndpoint: options.saveEndpoint,
+        onSave: options.onSave,
+        onLoad: options.onLoad,
+        onChange: options.onChange,
+        stylesUrl: options.stylesUrl,
+        fontFamilies: options.fontFamilies,
+        locale: options.locale,
+        buttons: options.buttons,
+        showGeneratedCSS: options.showGeneratedCSS,
+        iframeMode: options.iframeMode
+      },
+    });
+    
+    // Handle iframe mode if configured
     if (options.iframeMode) {
       window.addEventListener('viewportModeChange', this.handleViewportModeChange as EventListener);
     }
   }
 
   /**
-   * Handle viewport mode changes from the panel
+   * Handle viewport mode changes for iframe
    */
-  private handleViewportModeChange = (event: CustomEvent<{ mode: ViewportMode }>): void => {
+  private handleViewportModeChange = (event: CustomEvent<{ mode: string }>): void => {
     if (!this.iframe || !this.options.iframeMode) return;
     
     const mode = event.detail.mode;
@@ -58,10 +121,9 @@ export class CSSEditor {
   };
 
   /**
-   * Initialize the CSS Editor with a button
+   * Initialize the CSS Editor
    */
   public init(): void {
-    // Create iframe if in iframe mode
     if (this.options.iframeMode) {
       this.createIframe();
     } else {
@@ -75,7 +137,9 @@ export class CSSEditor {
   public startPicking(): void {
     this.picker.start((element: Element) => {
       const selector = generateUniqueSelector(element);
-      this.panel.show(selector, element);
+      if (this.component) {
+        this.component.show(selector, element);
+      }
     });
   }
 
@@ -92,8 +156,8 @@ export class CSSEditor {
   public showEditor(selector: string): void {
     const targetDoc = this.iframe?.contentDocument || document;
     const element = targetDoc.querySelector(selector);
-    if (element) {
-      this.panel.show(selector, element);
+    if (element && this.component) {
+      this.component.show(selector, element);
     } else {
       console.error(`Element not found for selector: ${selector}`);
     }
@@ -103,7 +167,49 @@ export class CSSEditor {
    * Hide the editor panel
    */
   public hideEditor(): void {
-    this.panel.hide();
+    if (this.component) {
+      this.component.hide();
+    }
+  }
+
+  /**
+   * Clear all changes
+   */
+  public clear(): void {
+    if (this.component) {
+      this.component.clear();
+    }
+  }
+
+  /**
+   * Destroy the editor and clean up
+   */
+  public destroy(): void {
+    if (this.component) {
+      unmount(this.component);
+      this.component = null;
+    }
+    
+    if (this.containerElement && this.containerElement.parentNode) {
+      this.containerElement.parentNode.removeChild(this.containerElement);
+    }
+    
+    if (this.activateButton && this.activateButton.parentNode) {
+      this.activateButton.parentNode.removeChild(this.activateButton);
+      this.activateButton = null;
+    }
+    
+    if (this.iframeContainer && this.iframeContainer.parentNode) {
+      this.iframeContainer.parentNode.removeChild(this.iframeContainer);
+      this.iframeContainer = null;
+      this.iframe = null;
+    }
+    
+    this.picker.stop();
+    
+    if (this.options.iframeMode) {
+      window.removeEventListener('viewportModeChange', this.handleViewportModeChange as EventListener);
+    }
   }
 
   /**
@@ -112,7 +218,6 @@ export class CSSEditor {
   private createIframe(): void {
     if (!this.options.iframeMode) return;
     
-    // Create container for iframe
     this.iframeContainer = document.createElement('div');
     this.iframeContainer.id = 'css-editor-iframe-container';
     this.iframeContainer.style.cssText = `
@@ -126,7 +231,6 @@ export class CSSEditor {
       overflow: auto;
     `;
     
-    // Create iframe
     this.iframe = document.createElement('iframe');
     this.iframe.id = 'css-editor-iframe';
     const sizes = this.options.iframeMode.viewportSizes || {
@@ -146,139 +250,65 @@ export class CSSEditor {
     
     this.iframe.src = this.options.iframeMode.url;
     
-    // Wait for iframe to load
     this.iframe.addEventListener('load', () => {
-      if (!this.iframe || !this.iframe.contentDocument) return;
-      
-      // Set target document for panel
-      this.panel.setTargetDocument(this.iframe.contentDocument);
-      
-      // Set target document for picker
-      this.picker.setTargetDocument(this.iframe.contentDocument, this.iframe);
-      
-      // Inject style element into iframe
-      const iframeStyleElement = this.iframe.contentDocument.createElement('style');
-      iframeStyleElement.id = 'css-editor-dynamic-styles';
-      this.iframe.contentDocument.head.appendChild(iframeStyleElement);
-      
-      // Create activator button after iframe loads
-      this.createActivateButton();
+      if (this.iframe?.contentDocument) {
+        this.picker.setTargetDocument(this.iframe.contentDocument, this.iframe);
+      }
     });
     
     this.iframeContainer.appendChild(this.iframe);
     document.body.appendChild(this.iframeContainer);
+    
+    // Auto-start picking for iframe mode
+    setTimeout(() => this.startPicking(), 500);
   }
 
   /**
-   * Create a floating activate button or use custom element
-   * Task 1: Support custom activator element via CSS selector
-   * Task 2: Use fixed top bar instead of floating button
+   * Create activator button
    */
   private createActivateButton(): void {
-    // Task 1: If custom activator selector is provided, use that element
-    if (this.options.activatorSelector) {
-      const customElement = document.querySelector(this.options.activatorSelector);
-      if (customElement) {
-        this.activateButton = customElement as HTMLElement;
-        this.attachActivatorListeners();
+    const selector = this.options.activatorSelector;
+    
+    if (selector) {
+      this.activateButton = document.querySelector(selector);
+      if (!this.activateButton) {
+        console.warn(`Activator element not found: ${selector}`);
         return;
-      } else {
-        console.warn(`Custom activator element not found: ${this.options.activatorSelector}`);
-        // Fall through to create default activator
       }
-    }
-    
-    // Task 2: Create fixed top bar instead of floating button
-    this.activateButton = document.createElement('div');
-    this.activateButton.id = 'css-editor-activate';
-    this.activateButton.textContent = CSSEditor.ACTIVATOR_TEXT_INACTIVE;
-    this.activateButton.title = 'Activate CSS Editor';
-    
-    const style = document.createElement('style');
-    style.textContent = `
-      #css-editor-activate {
+    } else {
+      this.activateButton = document.createElement('button');
+      this.activateButton.id = 'css-editor-activator';
+      this.activateButton.textContent = CSSEditor.ACTIVATOR_TEXT_INACTIVE;
+      this.activateButton.style.cssText = `
         position: fixed;
-        top: 0;
-        background: rgba(0, 0, 0, 0.85);
-        color: white;
-        padding: 10px 20px;
-        font-size: 14px;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-        cursor: pointer;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-        z-index: 9998;
-        transition: all 0.3s ease;
-        text-align: center;
-        user-select: none;
-      }
-      #css-editor-activate:hover {
-        background: rgba(0, 0, 0, 0.95);
-      }
-      #css-editor-activate.active {
+        bottom: 20px;
+        right: 20px;
+        padding: 12px 24px;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      }
-    `;
-    document.head.appendChild(style);
-
-    document.body.appendChild(this.activateButton);
-    this.attachActivatorListeners();
-  }
-
-  /**
-   * Attach click listeners to the activator element
-   */
-  private attachActivatorListeners(): void {
-    if (!this.activateButton) return;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        z-index: 9999;
+        transition: all 0.3s ease;
+      `;
+      document.body.appendChild(this.activateButton);
+    }
     
     this.activateButton.addEventListener('click', () => {
       if (this.picker.isPickerActive()) {
         this.stopPicking();
-        this.activateButton?.classList.remove('active');
-        // Task 2: Reset text when deactivating
-        if (!this.options.activatorSelector) {
-          this.activateButton!.textContent = CSSEditor.ACTIVATOR_TEXT_INACTIVE;
-        }
+        this.activateButton!.textContent = CSSEditor.ACTIVATOR_TEXT_INACTIVE;
       } else {
         this.startPicking();
-        this.activateButton?.classList.add('active');
-        // Task 2: Update text when activating
-        if (!this.options.activatorSelector) {
-          this.activateButton!.textContent = CSSEditor.ACTIVATOR_TEXT_ACTIVE;
-        }
+        this.activateButton!.textContent = CSSEditor.ACTIVATOR_TEXT_ACTIVE;
       }
     });
   }
-
-  /**
-   * Destroy the CSS Editor and clean up
-   */
-  public destroy(): void {
-    this.picker.stop();
-    this.panel.destroy();
-    
-    // Only remove if we created it (not custom activator)
-    if (this.activateButton && !this.options.activatorSelector) {
-      this.activateButton.remove();
-      this.activateButton = null;
-    }
-    
-    // Clean up iframe
-    if (this.iframeContainer) {
-      this.iframeContainer.remove();
-      this.iframeContainer = null;
-      this.iframe = null;
-    }
-    
-    // Remove viewport mode change listener
-    if (this.options.iframeMode) {
-      window.removeEventListener('viewportModeChange', this.handleViewportModeChange as EventListener);
-    }
-  }
 }
 
-// Export all necessary classes and functions
-export { ElementPicker } from './element-picker';
-export { CSSEditorPanel, CSSEditorOptions, ViewportMode } from './editor-panel';
-export { generateUniqueSelector } from './selector-generator';
-export { CSS_PROPERTIES, COMMON_PROPERTIES, getPropertyValues, getAdvancedProperties } from './css-properties';
-export { setLocale, getLocale, getAvailableLocales, getLocaleName, detectBrowserLocale, Locale } from './i18n';
+// Default export for UMD
+export default CSSEditor;
