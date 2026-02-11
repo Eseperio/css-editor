@@ -459,6 +459,11 @@ $panel-height-horizontal: 300px;
 
       &.disabled {
         opacity: 0.5;
+
+        &:hover,
+        &:focus-within {
+          opacity: 1;
+        }
       }
 
       &.active {
@@ -556,6 +561,14 @@ $panel-height-horizontal: 300px;
           
           &:hover {
             color: #f57c00;
+          }
+        }
+
+        &.mq-icon-current {
+          color: #f44336; // Red for matching media context
+
+          &:hover {
+            color: #d32f2f;
           }
         }
       }

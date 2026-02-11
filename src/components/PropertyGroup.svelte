@@ -1,7 +1,7 @@
 <script lang="ts">
   import { _ } from '../i18n/setup';
-  import { uiState, toggleGroupCollapse, isGroupCollapsed } from '../stores/ui';
-  import { currentStyles, modifiedProperties } from '../stores/editorState';
+  import { uiState, toggleGroupCollapse, isGroupCollapsed, viewportMode } from '../stores/ui';
+  import { editorState, isPropertyModified, getPropertyValueForContext } from '../stores/editorState';
   import { SPACING_PROPERTIES, type PropertyGroup as PropertyGroupType } from '../css-properties';
   import { icons } from '../icons';
   import Icon from './Icon.svelte';
@@ -16,15 +16,15 @@
   })();
 
   $: hasModifiedProperty = group.properties.some((prop) => {
-    if ($modifiedProperties.has(prop)) return true;
+    if (isPropertyModified(prop, $editorState)) return true;
     const spacingProp = SPACING_PROPERTIES.find((sp) => sp.general === prop);
     if (!spacingProp) return false;
-    return spacingProp.sides.some((side) => $modifiedProperties.has(side));
+    return spacingProp.sides.some((side) => isPropertyModified(side, $editorState));
   });
 
   $: dependencyMet = (() => {
     if (!group.dependsOn) return true;
-    const currentValue = $currentStyles.get(group.dependsOn.property);
+    const currentValue = getPropertyValueForContext(group.dependsOn.property, $viewportMode, $editorState);
     return currentValue ? group.dependsOn.values.includes(currentValue) : false;
   })();
 

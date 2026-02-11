@@ -97,17 +97,38 @@ export const generateCSS = (
   viewportSizes?: ViewportSizes
 ): string => {
   let css = '';
+
+  const parsePropertyKey = (propertyKey: string): { property: string; context: string | null } => {
+    const atIndex = propertyKey.lastIndexOf('@');
+    if (atIndex <= 0) return { property: propertyKey, context: null };
+    const context = propertyKey.slice(atIndex + 1);
+    if (context === 'desktop' || context === 'tablet' || context === 'phone') {
+      return { property: propertyKey.slice(0, atIndex), context };
+    }
+    return { property: propertyKey, context: null };
+  };
   
   // Group styles by media query context
   const mediaGroups: Map<string, Map<string, Map<string, string>>> = new Map();
   
   allElementChanges.forEach((data, selector) => {
-    data.modifiedProperties.forEach(property => {
-      const value = data.styles.get(property);
+    const contextSpecificProperties = new Set<string>();
+    data.modifiedProperties.forEach(propertyKey => {
+      const parsed = parsePropertyKey(propertyKey);
+      if (parsed.context) {
+        contextSpecificProperties.add(parsed.property);
+      }
+    });
+
+    data.modifiedProperties.forEach(propertyKey => {
+      const { property, context } = parsePropertyKey(propertyKey);
+      const value = data.styles.get(propertyKey);
       if (value) {
         // Determine media query context
         let mediaContext = 'all';
-        if (propertyMediaQueries) {
+        if (context) {
+          mediaContext = context;
+        } else if (!contextSpecificProperties.has(property) && propertyMediaQueries) {
           const selectorMediaQueries = propertyMediaQueries.get(selector);
           if (selectorMediaQueries) {
             mediaContext = selectorMediaQueries.get(property) || 'all';

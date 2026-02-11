@@ -20,13 +20,17 @@ export interface EditorState {
   advancedProperties: Set<string>;
   allElementChanges: Map<string, ElementStyles>;
   selectorParts: SelectorPart[];
-  propertyMediaQueries: Map<string, Map<string, string>>;
+  propertyMediaQueries: Map<string, Map<string, MediaQueryContext>>;
   cssVariables: Map<string, string>;
   propertyVariables: Map<string, Map<string, string>>;
   targetDocument: Document;
 }
 
 export type MediaQueryContext = 'all' | 'desktop' | 'tablet' | 'phone';
+
+const buildPropertyContextKey = (property: string, context: MediaQueryContext): string => {
+  return context === 'all' ? property : `${property}@${context}`;
+};
 
 export interface SelectorPart {
   selector: string;
@@ -238,10 +242,12 @@ export const setTargetDocument = (doc: Document) => {
 
 export const updateStyle = (property: string, value: string) => {
   editorState.update(state => {
+    const context = getPropertyMediaQueryContext(property, state);
+    const key = buildPropertyContextKey(property, context);
     const newStyles = new Map(state.currentStyles);
-    newStyles.set(property, value);
+    newStyles.set(key, value);
     const newModified = new Set(state.modifiedProperties);
-    newModified.add(property);
+    newModified.add(key);
     const allElementChanges = new Map(state.allElementChanges);
     if (state.currentSelector) {
       allElementChanges.set(state.currentSelector, {
@@ -260,10 +266,12 @@ export const updateStyle = (property: string, value: string) => {
 
 export const removeStyle = (property: string) => {
   editorState.update(state => {
+    const context = getPropertyMediaQueryContext(property, state);
+    const key = buildPropertyContextKey(property, context);
     const newStyles = new Map(state.currentStyles);
-    newStyles.delete(property);
+    newStyles.delete(key);
     const newModified = new Set(state.modifiedProperties);
-    newModified.delete(property);
+    newModified.delete(key);
     const allElementChanges = new Map(state.allElementChanges);
     if (state.currentSelector) {
       if (newModified.size > 0) {
@@ -318,13 +326,94 @@ export const getPropertyMediaQueryContext = (property: string, state: EditorStat
   return (selectorMQs.get(property) as MediaQueryContext) || 'all';
 };
 
+export const getPropertyValueForContext = (
+  property: string,
+  context: MediaQueryContext,
+  state: EditorState,
+): string => {
+  if (context !== 'all') {
+    const contextKey = buildPropertyContextKey(property, context);
+    if (state.currentStyles.has(contextKey)) {
+      return state.currentStyles.get(contextKey) || '';
+    }
+  }
+  return state.currentStyles.get(property) || '';
+};
+
+export const getPropertyValue = (property: string, state: EditorState): string => {
+  const context = getPropertyMediaQueryContext(property, state);
+  return getPropertyValueForContext(property, context, state);
+};
+
+export const isPropertyModifiedInContext = (
+  property: string,
+  context: MediaQueryContext,
+  state: EditorState,
+): boolean => {
+  if (context !== 'all' && state.modifiedProperties.has(buildPropertyContextKey(property, context))) {
+    return true;
+  }
+  return state.modifiedProperties.has(property);
+};
+
+export const isPropertyModified = (property: string, state: EditorState): boolean => {
+  if (state.modifiedProperties.has(property)) return true;
+  const prefix = `${property}@`;
+  for (const key of state.modifiedProperties) {
+    if (key.startsWith(prefix)) return true;
+  }
+  return false;
+};
+
+export const hasPropertyValueForContext = (
+  property: string,
+  context: MediaQueryContext,
+  state: EditorState,
+): boolean => {
+  if (context === 'all') return state.modifiedProperties.has(property);
+  return state.modifiedProperties.has(buildPropertyContextKey(property, context));
+};
+
+export const hasPropertyContextValues = (property: string, state: EditorState): boolean => {
+  const prefix = `${property}@`;
+  for (const key of state.modifiedProperties) {
+    if (key.startsWith(prefix)) return true;
+  }
+  return false;
+};
+
+export const getPropertyVariableName = (property: string, state: EditorState): string | null => {
+  const selector = state.currentSelector;
+  if (!selector) return null;
+  const selectorVars = state.propertyVariables.get(selector);
+  if (!selectorVars) return null;
+  const context = getPropertyMediaQueryContext(property, state);
+  const contextKey = buildPropertyContextKey(property, context);
+  return selectorVars.get(contextKey) || selectorVars.get(property) || null;
+};
+
+export const getPropertyVariableNameForContext = (
+  property: string,
+  context: MediaQueryContext,
+  state: EditorState,
+): string | null => {
+  const selector = state.currentSelector;
+  if (!selector) return null;
+  const selectorVars = state.propertyVariables.get(selector);
+  if (!selectorVars) return null;
+  const contextKey = buildPropertyContextKey(property, context);
+  return selectorVars.get(contextKey) || selectorVars.get(property) || null;
+};
+
 export const setPropertyVariable = (property: string, variableName: string) => {
   editorState.update(state => {
     const selector = state.currentSelector;
     if (!selector) return state;
     const selectorVars = new Map(state.propertyVariables.get(selector) || []);
+    const context = getPropertyMediaQueryContext(property, state);
+    const key = buildPropertyContextKey(property, context);
     const name = normalizeVariableName(variableName);
-    selectorVars.set(property, name);
+    selectorVars.set(key, name);
     const propertyVariables = new Map(state.propertyVariables);
     propertyVariables.set(selector, selectorVars);
 
@@ -332,8 +421,8 @@ export const setPropertyVariable = (property: string, variableName: string) => {
     const currentStyles = new Map(state.currentStyles);
     const modifiedProperties = new Set(state.modifiedProperties);
     if (varValue) {
-      currentStyles.set(property, `var(${name})`);
-      modifiedProperties.add(property);
+      currentStyles.set(key, `var(${name})`);
+      modifiedProperties.add(key);
     }
 
     const allElementChanges = new Map(state.allElementChanges);
@@ -359,8 +448,14 @@ export const removePropertyVariable = (property: string) => {
     const selector = state.currentSelector;
     if (!selector) return state;
     const selectorVars = new Map(state.propertyVariables.get(selector) || []);
-    const varName = selectorVars.get(property);
-    selectorVars.delete(property);
+    const context = getPropertyMediaQueryContext(property, state);
+    const key = buildPropertyContextKey(property, context);
+    const varName = selectorVars.get(key) || selectorVars.get(property);
+    if (selectorVars.has(key)) {
+      selectorVars.delete(key);
+    } else if (selectorVars.has(property)) {
+      selectorVars.delete(property);
+    }
     const propertyVariables = new Map(state.propertyVariables);
     propertyVariables.set(selector, selectorVars);
 
@@ -368,15 +463,23 @@ export const removePropertyVariable = (property: string) => {
     if (varName) {
       const computedValue = state.cssVariables.get(varName);
       if (computedValue) {
-        currentStyles.set(property, computedValue);
+        currentStyles.set(key, computedValue);
+      } else {
+        currentStyles.delete(key);
       }
+    }
+    const modifiedProperties = new Set(state.modifiedProperties);
+    if (!currentStyles.has(key)) {
+      modifiedProperties.delete(key);
+    } else {
+      modifiedProperties.add(key);
     }
 
     const allElementChanges = new Map(state.allElementChanges);
     if (selector) {
       allElementChanges.set(selector, {
         styles: new Map(currentStyles),
-        modifiedProperties: new Set(state.modifiedProperties),
+        modifiedProperties: new Set(modifiedProperties),
       });
     }
 
@@ -384,6 +487,7 @@ export const removePropertyVariable = (property: string) => {
       ...state,
       propertyVariables,
       currentStyles,
+      modifiedProperties,
       allElementChanges,
     };
   });
