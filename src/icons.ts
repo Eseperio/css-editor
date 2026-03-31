@@ -21,6 +21,13 @@ import {
   ArrowRight,
   ArrowUp,
   ArrowDown,
+  Save,
+  Copy,
+  RefreshCw,
+  PanelLeft,
+  PanelRight,
+  PanelTop,
+  PanelBottom,
   Layers,
   Variable,  // Task 6: CSS variable icon
   Edit       // Task 7: Variables panel edit icon
@@ -97,6 +104,13 @@ export const icons = {
   arrowRight: ArrowRight,
   arrowUp: ArrowUp,
   arrowDown: ArrowDown,
+  save: Save,
+  copy: Copy,
+  refresh: RefreshCw,
+  panelLeft: PanelLeft,
+  panelRight: PanelRight,
+  panelTop: PanelTop,
+  panelBottom: PanelBottom,
   layers: Layers,      // Task 5: Media query icon
   variable: Variable,  // Task 6: CSS variable icon
   edit: Edit           // Task 7: Variables panel edit icon

@@ -1,34 +1,75 @@
 {
   "name": "css-editor",
   "version": "1.0.0",
-  "description": "A tool for editing CSS over an existing HTML page",
+  "description": "A powerful visual CSS editing tool for any HTML page. Pick elements interactively and modify their styles through an intuitive side panel interface.",
+  "type": "module",
   "main": "dist/css-editor.js",
-  "types": "dist/css-editor.d.ts",
+  "module": "dist/css-editor.esm.js",
+  "types": "dist/src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/css-editor.esm.js",
+      "require": "./dist/css-editor.js"
+    },
+    "./css": "./dist/css-editor.css"
+  },
+  "files": [
+    "dist/**/*",
+    "!dist/tests",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
-    "build": "tsc && rollup -c",
-    "dev": "rollup -c -w",
-    "test": "echo \"No tests yet\" && exit 0",
+    "build": "vite build && npm run build:types",
+    "build:types": "tsc --emitDeclarationOnly",
+    "dev": "vite",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "build:styles": "node scripts/build-styles.js",
-    "serve": "npx concurrently \"npm run dev\" \"node server.js\""
+    "preview": "vite preview",
+    "prepublishOnly": "npm run test && npm run build"
   },
   "keywords": [
     "css",
     "editor",
     "visual-editor",
-    "css-selector"
+    "css-selector",
+    "element-picker",
+    "style-editor",
+    "css-modification",
+    "frontend",
+    "web-development",
+    "i18n"
   ],
-  "author": "",
+  "author": "CSS Editor Contributors",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Eseperio/css-editor.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Eseperio/css-editor/issues"
+  },
+  "homepage": "https://github.com/Eseperio/css-editor#readme",
   "devDependencies": {
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^15.2.3",
     "@rollup/plugin-typescript": "^11.1.6",
+    "@sveltejs/vite-plugin-svelte": "^6.2.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/svelte": "^5.3.1",
     "concurrently": "^9.2.1",
+    "jsdom": "^27.4.0",
     "rollup": "^4.9.6",
     "rollup-plugin-scss": "^4.0.1",
     "sass": "^1.94.2",
+    "svelte": "^5.46.1",
+    "svelte-i18n": "^4.0.1",
     "tslib": "^2.6.2",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "vite": "^7.3.0",
+    "vitest": "^4.0.16"
   },
   "dependencies": {
     "lucide": "^0.562.0"

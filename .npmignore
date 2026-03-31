@@ -1,0 +1,42 @@
+# Source files
+src/
+old/
+example/
+docs/
+
+# Test directory but keep compiled test types out of package
+tests/
+dist/tests/
+
+# Development files
+.idea/
+.vscode/
+.git/
+.gitignore
+node_modules/
+
+# Config files
+vite.config.ts
+vitest.config.ts
+tsconfig.json
+rollup.config.js
+svelte.config.js
+server.js
+
+# Documentation that's not needed
+AGENTS.md
+ROADMAP.md
+
+# Build scripts
+scripts/
+
+# Logs and temp files
+*.log
+.DS_Store
+*.swp
+*.swo
+*~
+
+# Package lock files (users should generate their own)
+package-lock.json
+

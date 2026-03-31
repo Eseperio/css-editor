@@ -2,6 +2,18 @@
  * Generate a unique CSS selector for a given element
  */
 export function generateUniqueSelector(element: Element): string {
+  const doc = element.ownerDocument || document;
+  const body = doc.body;
+  const root = doc.documentElement;
+
+  if (body && element === body) {
+    return 'body';
+  }
+
+  if (root && element === root) {
+    return 'html';
+  }
+
   // If element has an ID, use it as it's the most specific
   if (element.id) {
     return `#${element.id}`;
@@ -11,7 +23,7 @@ export function generateUniqueSelector(element: Element): string {
   const path: string[] = [];
   let current: Element | null = element;
 
-  while (current && current !== document.body) {
+  while (current && current !== body && current !== root) {
     let selector = current.tagName.toLowerCase();
     
     // Add classes if available
@@ -36,14 +48,11 @@ export function generateUniqueSelector(element: Element): string {
     current = current.parentElement;
   }
 
-  // Always include body in the path for clarity
-  path.unshift('body');
-
   // Build the full selector
   let fullSelector = path.join(' > ');
 
   // Verify the selector is unique
-  const matches = document.querySelectorAll(fullSelector);
+  const matches = doc.querySelectorAll(fullSelector);
   if (matches.length === 1 && matches[0] === element) {
     return fullSelector;
   }
@@ -56,12 +65,15 @@ export function generateUniqueSelector(element: Element): string {
  * Generate a fallback selector using more specific attributes
  */
 function generateFallbackSelector(element: Element): string {
+  const doc = element.ownerDocument || document;
+  const body = doc.body;
+  const root = doc.documentElement;
   const path: string[] = [];
   let current: Element | null = element;
   let iterations = 0;
   const maxIterations = 10;
 
-  while (current && current !== document.body && iterations < maxIterations) {
+  while (current && current !== body && current !== root && iterations < maxIterations) {
     let selector = current.tagName.toLowerCase();
     
     if (current.id) {
