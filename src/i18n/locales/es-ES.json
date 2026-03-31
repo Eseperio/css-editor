@@ -19,7 +19,8 @@
       "anchorLeft": "Izquierda",
       "anchorTop": "Arriba",
       "anchorBottom": "Abajo",
-      "language": "Idioma"
+      "language": "Idioma",
+      "selectElementPrompt": "Seleccione un elemento de la página"
     },
     "selectorConfig": {
       "children": "Hijos",

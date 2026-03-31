@@ -48,6 +48,7 @@
   let resizeStartHeight = 0;
   let boundResizeMove: ((event: MouseEvent) => void) | null = null;
   let boundResizeEnd: (() => void) | null = null;
+  let resizeCaptureLayer: HTMLDivElement | null = null;
 
   onMount(() => {
     if (options.locale) {
@@ -64,6 +65,18 @@
     stylesStore.initStyleElement();
 
     initializeCollapsedGroups([...PROPERTY_GROUPS.map((group) => group.name), 'css-variables']);
+
+    return () => {
+      if (boundResizeMove) {
+        document.removeEventListener('mousemove', boundResizeMove);
+        boundResizeMove = null;
+      }
+      if (boundResizeEnd) {
+        document.removeEventListener('mouseup', boundResizeEnd);
+        boundResizeEnd = null;
+      }
+      removeResizeCaptureLayer();
+    };
   });
 
   $: {
@@ -182,6 +195,7 @@
     boundResizeMove = handleResizeMove;
     boundResizeEnd = handleResizeEnd;
 
+    createResizeCaptureLayer();
     document.addEventListener('mousemove', boundResizeMove);
     document.addEventListener('mouseup', boundResizeEnd);
 
@@ -225,7 +239,35 @@
       document.removeEventListener('mouseup', boundResizeEnd);
       boundResizeEnd = null;
     }
+    removeResizeCaptureLayer();
     panelEl?.classList.remove('resizing');
+  }
+
+  function createResizeCaptureLayer() {
+    if (resizeCaptureLayer) return;
+
+    const cursor = ($uiState.anchorPosition === 'left' || $uiState.anchorPosition === 'right')
+      ? 'ew-resize'
+      : 'ns-resize';
+
+    const layer = document.createElement('div');
+    layer.id = 'css-editor-resize-capture-layer';
+    layer.style.cssText = `
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: transparent;
+      cursor: ${cursor};
+    `;
+
+    document.body.appendChild(layer);
+    resizeCaptureLayer = layer;
+  }
+
+  function removeResizeCaptureLayer() {
+    if (!resizeCaptureLayer) return;
+    resizeCaptureLayer.remove();
+    resizeCaptureLayer = null;
   }
 </script>
 
@@ -253,8 +295,14 @@
 
     <div class="css-editor-content">
       <div class="properties-grid">
-        <SelectorEditor />
-        <PropertyGroups fontFamilies={options.fontFamilies} />
+        {#if $editorState.currentElement}
+          <SelectorEditor />
+          <PropertyGroups fontFamilies={options.fontFamilies} />
+        {:else}
+          <div class="empty-selection-state">
+            {$_('ui.panel.selectElementPrompt')}
+          </div>
+        {/if}
       </div>
     </div>
 

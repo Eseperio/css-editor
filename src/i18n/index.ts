@@ -30,6 +30,7 @@ export interface Translations {
       anchorTop: string;
       anchorBottom: string;
       language: string;
+      selectElementPrompt: string;
     };
     propertySelector: {
       title: string;

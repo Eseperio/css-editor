@@ -8,6 +8,7 @@ export class ElementPicker {
   private currentHighlighted: Element | null = null;
   private targetDocument: Document = document;
   private targetIframe: HTMLIFrameElement | null = null;
+  private keepActiveAfterSelection: boolean = false;
 
   /**
    * Set target document for picker (for iframe mode)
@@ -20,11 +21,12 @@ export class ElementPicker {
   /**
    * Start picking mode
    */
-  public start(callback: (element: Element) => void): void {
+  public start(callback: (element: Element) => void, options: { persistent?: boolean } = {}): void {
     if (this.isActive) return;
     
     this.isActive = true;
     this.onElementSelected = callback;
+    this.keepActiveAfterSelection = options.persistent === true;
     this.createOverlay();
     this.attachListeners();
     document.body.style.cursor = 'crosshair';
@@ -40,6 +42,7 @@ export class ElementPicker {
     if (!this.isActive) return;
     
     this.isActive = false;
+    this.keepActiveAfterSelection = false;
     this.removeOverlay();
     this.detachListeners();
     document.body.style.cursor = '';
@@ -105,7 +108,10 @@ export class ElementPicker {
     // Ignore our own overlay and editor panel
     if (
       target.id === 'css-editor-picker-overlay' ||
+      target.id === 'css-editor-activator' ||
       target.id === 'css-editor-panel' ||
+      target.closest('[data-css-editor-activator="true"]') ||
+      target.closest('#css-editor-activator') ||
       target.closest('#css-editor-panel')
     ) {
       return;
@@ -129,13 +135,18 @@ export class ElementPicker {
     // Ignore our own elements
     if (
       target.id === 'css-editor-picker-overlay' ||
+      target.id === 'css-editor-activator' ||
       target.id === 'css-editor-panel' ||
+      target.closest('[data-css-editor-activator="true"]') ||
+      target.closest('#css-editor-activator') ||
       target.closest('#css-editor-panel')
     ) {
       return;
     }
 
-    this.stop();
+    if (!this.keepActiveAfterSelection) {
+      this.stop();
+    }
     
     if (this.onElementSelected) {
       this.onElementSelected(target);

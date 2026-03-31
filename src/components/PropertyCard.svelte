@@ -7,6 +7,7 @@
   import Icon from './Icon.svelte';
 
   export let group: PropertyGroupType;
+  export let groupNames: string[] = [];
 
   $: collapsed = isGroupCollapsed(group.name, $uiState);
   $: groupLabel = (() => {
@@ -45,7 +46,7 @@
   $: dependencyWarning = group.dependsOn && !dependencyMet ? group.dependsOn.warning : '';
 
   function handleToggle() {
-    toggleGroupCollapse(group.name);
+    toggleGroupCollapse(group.name, groupNames);
   }
 </script>
 
@@ -54,7 +55,13 @@
   class:dependency-unmet={!dependencyMet}
   data-group={group.name}
 >
-  <div class="property-group-header" on:click={handleToggle}>
+  <button
+    class="property-group-header"
+    type="button"
+    data-group={group.name}
+    aria-expanded={!collapsed}
+    on:click={handleToggle}
+  >
     <div class="property-group-indicator" class:active={hasModifiedProperty}></div>
     <div class="property-group-title">{groupLabel}</div>
     {#if dependencyWarning}
@@ -69,7 +76,7 @@
         <Icon icon={icons.chevronDown} />
       {/if}
     </div>
-  </div>
+  </button>
   <div class="property-group-content" class:collapsed={collapsed}>
     <slot />
   </div>

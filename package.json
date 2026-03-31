@@ -1,11 +1,25 @@
 {
   "name": "css-editor",
   "version": "1.0.0",
-  "description": "A tool for editing CSS over an existing HTML page",
+  "description": "A powerful visual CSS editing tool for any HTML page. Pick elements interactively and modify their styles through an intuitive side panel interface.",
   "type": "module",
   "main": "dist/css-editor.js",
   "module": "dist/css-editor.esm.js",
-  "types": "dist/css-editor.d.ts",
+  "types": "dist/src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/css-editor.esm.js",
+      "require": "./dist/css-editor.js"
+    },
+    "./css": "./dist/css-editor.css"
+  },
+  "files": [
+    "dist/**/*",
+    "!dist/tests",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "vite build && npm run build:types",
     "build:types": "tsc --emitDeclarationOnly",
@@ -13,16 +27,31 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "build:styles": "node scripts/build-styles.js",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "prepublishOnly": "npm run test && npm run build"
   },
   "keywords": [
     "css",
     "editor",
     "visual-editor",
-    "css-selector"
+    "css-selector",
+    "element-picker",
+    "style-editor",
+    "css-modification",
+    "frontend",
+    "web-development",
+    "i18n"
   ],
-  "author": "",
+  "author": "CSS Editor Contributors",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Eseperio/css-editor.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Eseperio/css-editor/issues"
+  },
+  "homepage": "https://github.com/Eseperio/css-editor#readme",
   "devDependencies": {
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^15.2.3",

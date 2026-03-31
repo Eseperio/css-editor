@@ -3,6 +3,7 @@ import './styles/editor-panel.scss';
 import { ElementPicker } from './element-picker';
 import { generateUniqueSelector } from './selector-generator';
 import CSSEditorComponent from './components/CSSEditor.svelte';
+import { panelVisible } from './stores/ui';
 
 /**
  * CSS Editor Options Interface
@@ -47,8 +48,8 @@ type CSSEditorComponentExports = {
 };
 
 export class CSSEditor {
-  private static readonly ACTIVATOR_TEXT_INACTIVE = 'Press here to enter style editor';
-  private static readonly ACTIVATOR_TEXT_ACTIVE = 'Click any element to edit its styles';
+  private static readonly ACTIVATOR_TEXT_INACTIVE = 'Open style editor';
+  private static readonly ACTIVATOR_TEXT_ACTIVE = 'Close style editor';
   
   private picker: ElementPicker;
   private component: CSSEditorComponentExports | null = null;
@@ -57,6 +58,9 @@ export class CSSEditor {
   private iframe: HTMLIFrameElement | null = null;
   private iframeContainer: HTMLElement | null = null;
   private containerElement: HTMLElement;
+  private ownsActivateButton: boolean = false;
+  private isPanelOpen: boolean = false;
+  private unsubscribePanelVisible: (() => void) | null = null;
 
   constructor(options: CSSEditorOptions = {}) {
     this.options = options;
@@ -89,6 +93,16 @@ export class CSSEditor {
     if (options.iframeMode) {
       window.addEventListener('viewportModeChange', this.handleViewportModeChange as EventListener);
     }
+
+    this.unsubscribePanelVisible = panelVisible.subscribe((visible) => {
+      this.isPanelOpen = visible;
+      if (visible) {
+        this.startPersistentPicking();
+      } else {
+        this.stopPicking();
+      }
+      this.updateActivateButtonLabel(visible);
+    });
   }
 
   /**
@@ -124,10 +138,10 @@ export class CSSEditor {
    * Initialize the CSS Editor
    */
   public init(): void {
+    this.createActivateButton();
+
     if (this.options.iframeMode) {
       this.createIframe();
-    } else {
-      this.createActivateButton();
     }
   }
 
@@ -136,10 +150,7 @@ export class CSSEditor {
    */
   public startPicking(): void {
     this.picker.start((element: Element) => {
-      const selector = generateUniqueSelector(element);
-      if (this.component) {
-        this.component.show(selector, element);
-      }
+      this.handleElementSelection(element);
     });
   }
 
@@ -194,10 +205,11 @@ export class CSSEditor {
       this.containerElement.parentNode.removeChild(this.containerElement);
     }
     
-    if (this.activateButton && this.activateButton.parentNode) {
+    if (this.ownsActivateButton && this.activateButton && this.activateButton.parentNode) {
       this.activateButton.parentNode.removeChild(this.activateButton);
-      this.activateButton = null;
     }
+    this.activateButton = null;
+    this.ownsActivateButton = false;
     
     if (this.iframeContainer && this.iframeContainer.parentNode) {
       this.iframeContainer.parentNode.removeChild(this.iframeContainer);
@@ -206,6 +218,11 @@ export class CSSEditor {
     }
     
     this.picker.stop();
+
+    if (this.unsubscribePanelVisible) {
+      this.unsubscribePanelVisible();
+      this.unsubscribePanelVisible = null;
+    }
     
     if (this.options.iframeMode) {
       window.removeEventListener('viewportModeChange', this.handleViewportModeChange as EventListener);
@@ -253,20 +270,23 @@ export class CSSEditor {
     this.iframe.addEventListener('load', () => {
       if (this.iframe?.contentDocument) {
         this.picker.setTargetDocument(this.iframe.contentDocument, this.iframe);
+        if (this.isPanelOpen) {
+          this.startPersistentPicking();
+        }
       }
     });
     
     this.iframeContainer.appendChild(this.iframe);
     document.body.appendChild(this.iframeContainer);
     
-    // Auto-start picking for iframe mode
-    setTimeout(() => this.startPicking(), 500);
   }
 
   /**
    * Create activator button
    */
   private createActivateButton(): void {
+    if (this.activateButton) return;
+
     const selector = this.options.activatorSelector;
     
     if (selector) {
@@ -275,10 +295,13 @@ export class CSSEditor {
         console.warn(`Activator element not found: ${selector}`);
         return;
       }
+      this.activateButton.setAttribute('data-css-editor-activator', 'true');
+      this.ownsActivateButton = false;
     } else {
       this.activateButton = document.createElement('button');
       this.activateButton.id = 'css-editor-activator';
       this.activateButton.textContent = CSSEditor.ACTIVATOR_TEXT_INACTIVE;
+      this.activateButton.setAttribute('data-css-editor-activator', 'true');
       this.activateButton.style.cssText = `
         position: fixed;
         bottom: 20px;
@@ -296,17 +319,44 @@ export class CSSEditor {
         transition: all 0.3s ease;
       `;
       document.body.appendChild(this.activateButton);
+      this.ownsActivateButton = true;
     }
     
     this.activateButton.addEventListener('click', () => {
-      if (this.picker.isPickerActive()) {
-        this.stopPicking();
-        this.activateButton!.textContent = CSSEditor.ACTIVATOR_TEXT_INACTIVE;
+      if (!this.component) return;
+
+      if (this.isPanelOpen) {
+        this.component.hide();
       } else {
-        this.startPicking();
-        this.activateButton!.textContent = CSSEditor.ACTIVATOR_TEXT_ACTIVE;
+        this.component.show('', null);
       }
     });
+
+    this.updateActivateButtonLabel(this.isPanelOpen);
+  }
+
+  private startPersistentPicking(): void {
+    if (this.options.iframeMode && !this.iframe?.contentDocument) {
+      return;
+    }
+    this.picker.stop();
+    this.picker.start((element: Element) => {
+      this.handleElementSelection(element);
+    }, { persistent: true });
+  }
+
+  private handleElementSelection(element: Element): void {
+    const selector = generateUniqueSelector(element);
+    if (this.component) {
+      this.component.show(selector, element);
+    }
+  }
+
+  private updateActivateButtonLabel(isActive: boolean): void {
+    if (!this.activateButton || !this.ownsActivateButton) return;
+    this.activateButton.textContent = isActive
+      ? CSSEditor.ACTIVATOR_TEXT_ACTIVE
+      : CSSEditor.ACTIVATOR_TEXT_INACTIVE;
   }
 }
 
